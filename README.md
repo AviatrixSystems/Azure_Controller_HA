@@ -7,7 +7,7 @@ This Terraform module:
 - Creates an access account on the controller.
 - Creates storage and container required for backup/function logs.
 - Creates an Alert to check the loadbalancer health probes.
-- Creates an azure funtion to manage failover.
+- Creates an azure funtion to manage failover event.
 
 ## Prerequisites
 
