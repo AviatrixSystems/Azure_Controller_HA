@@ -93,7 +93,7 @@ terraform init
 terraform apply
 ````
 
-Note:
+Additional Information:
 
 1. Email alert applied using terraform is not triggered.. Working with azure on it.
     In the meantime the alert can be configured manaully to get the email notifications.
@@ -101,9 +101,9 @@ Note:
 2. To trigger the failover, insert a deny rule on controller SG by blocking https traffic from Azure load balancer(sevice tag).
 
 3. Total expected time for failover ~20 mins
-    - ~5 min for azure alert to get fired.
+    - ~5 min for azure alert to get fired as controller unhealthy.
     - ~15 min to deploy, initialize, restore the new controller.
     
-4. Makes sure enable the backup on controller prior to triggering the failover.
+4. Makes sure to enable the backup on the healthy controller prior to triggering the failover.
 
-5. Failover logs can be view in function monitor logs.
+5. Failover logs can be viewed in function monitor logs.
