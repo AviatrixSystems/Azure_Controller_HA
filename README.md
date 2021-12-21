@@ -108,5 +108,5 @@ Additional Information:
 
 Note: 
 
-Alert is not triggere when instance is deleted or stopped manually. It will only be triggered only when loadbalancer health checks are failed.
+Alert will not be triggered when instance is deleted or stopped manually. It will only be triggered when loadbalancer health checks are failed.
 To test the failover, insert a deny rule on controller SG by blocking https traffic from Azure load balancer(sevice tag).
