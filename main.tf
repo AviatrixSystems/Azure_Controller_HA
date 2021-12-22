@@ -214,6 +214,9 @@ resource "azurerm_role_assignment" "aviatrix_custom_role" {
   scope                = module.aviatrix_controller_build.aviatrix_controller_rg.id
   role_definition_name = azurerm_role_definition.aviatrix_function_role.name
   principal_id         = azurerm_user_assigned_identity.aviatrix_controller_identity.principal_id
+  depends_on = [
+    azurerm_monitor_metric_alert.aviatrix_controller_alert
+  ]
 }
 
 
