@@ -160,6 +160,9 @@ resource "azurerm_function_app" "app" {
     linux_fx_version = "Python|3.9"
     ftps_state       = "Disabled"
   }
+  depends_on = [
+    module.aviatrix_controller_initialize
+  ]
 }
 
 resource "azurerm_user_assigned_identity" "aviatrix_controller_identity" {
