@@ -68,7 +68,7 @@ to authenticate to Azure.
 
 ```hcl
 app_name                            = "<< app registration name >>"
-controller_name                     = "<< controller name >>" 
+controller_name                     = "<< controller name can only consist of lowercase letters and numbers, and must be between 3 and 24 characters long >>" 
 location                            = "<< location for controller >>"
 controller_virtual_machine_size     = "<< controller instance size >>"
 controller_vnet_cidr                = "<< vnet cidr >>"
