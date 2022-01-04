@@ -46,7 +46,7 @@ module "aviatrix_controller_build" {
 
 module "aviatrix_controller_initialize" {
   source                        = "./modules/aviatrix_controller_initialize"
-  avx_controller_public_ip      = module.aviatrix_controller_build.aviatrix_controller_public_ip_address
+  avx_controller_public_ip      = module.aviatrix_controller_build.aviatrix_controller_lb_public_ip_address
   avx_controller_private_ip     = cidrhost(var.controller_subnet_cidr, 4)
   avx_controller_admin_email    = var.avx_controller_admin_email
   avx_controller_admin_password = var.avx_controller_admin_password
