@@ -95,16 +95,13 @@ terraform apply
 
 Additional Information:
 
-1. Email alert applied using terraform is not triggered.. Working with azure on it.
-    In the meantime the alert can be configured manaully to get the email notifications.
-
-2. Total expected time for failover ~20 mins
+1. Total expected time for failover ~20 mins
     - ~5 min for azure alert to get fired as controller unhealthy.
     - ~15 min to deploy, initialize, restore the new controller.
     
-3. Makes sure to enable the backup on the healthy controller prior to triggering the failover.
+2. Makes sure to enable the backup on the healthy controller prior to triggering the failover.
 
-4. Failover logs can be viewed in function monitor logs.
+3. Failover logs can be viewed in function monitor logs.
 
 Note: 
 
