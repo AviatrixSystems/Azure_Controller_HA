@@ -39,15 +39,7 @@ resource "azurerm_subnet" "aviatrix_controller_subnet" {
   var.controller_subnet_cidr]
 }
 
-# // 3. Create Public IP Address for VM
-# resource "azurerm_public_ip" "aviatrix_controller_public_ip" {
-#   allocation_method   = "Static"
-#   location            = azurerm_resource_group.aviatrix_controller_rg.location
-#   name                = "${var.controller_name}-public-ip"
-#   resource_group_name = azurerm_resource_group.aviatrix_controller_rg.name
-# }
-
-// 3.5. Create Public IP Address for LB
+// 3. Create Public IP Address for LB
 resource "azurerm_public_ip" "aviatrix_lb_public_ip" {
   allocation_method   = "Static"
   location            = azurerm_resource_group.aviatrix_controller_rg.location
@@ -75,21 +67,7 @@ resource "azurerm_network_security_group" "aviatrix_controller_nsg" {
   }
 }
 
-# # 5. Create the Virtual Network Interface Card
-# //  associate the public IP address with a VM by assigning it to a nic
-# resource "azurerm_network_interface" "aviatrix_controller_nic" {
-#   location            = azurerm_resource_group.aviatrix_controller_rg.location
-#   name                = "${var.controller_name}-network-interface-card"
-#   resource_group_name = azurerm_resource_group.aviatrix_controller_rg.name
-#   ip_configuration {
-#     name                          = "${var.controller_name}-nic"
-#     private_ip_address_allocation = "Dynamic"
-#     subnet_id                     = azurerm_subnet.aviatrix_controller_subnet.id
-#     public_ip_address_id          = azurerm_public_ip.aviatrix_controller_public_ip.id
-#   }
-# }
-
-# 6. Create the virtual machine
+# 5. Create the virtual machine
 resource "azurerm_orchestrated_virtual_machine_scale_set" "aviatrix_vm_scale_set" {
   encryption_at_host_enabled  = false
   instances                   = 1
@@ -114,8 +92,6 @@ resource "azurerm_orchestrated_virtual_machine_scale_set" "aviatrix_vm_scale_set
     primary                       = true
 
     ip_configuration {
-      # application_gateway_backend_address_pool_ids = []
-      # application_security_group_ids               = []
       load_balancer_backend_address_pool_ids = [
         azurerm_lb_backend_address_pool.aviatrix_lb_pool.id,
       ]
@@ -162,6 +138,7 @@ resource "azurerm_orchestrated_virtual_machine_scale_set" "aviatrix_vm_scale_set
   }
 }
 
+# 6. Create load balancer
 resource "azurerm_lb" "aviatrix_lb" {
   location            = azurerm_resource_group.aviatrix_controller_rg.location
   name                = "${var.controller_name}-lb"
@@ -181,11 +158,13 @@ resource "azurerm_lb" "aviatrix_lb" {
   }
 }
 
+# 6.1. Create load balancer backend pool
 resource "azurerm_lb_backend_address_pool" "aviatrix_lb_pool" {
   loadbalancer_id = azurerm_lb.aviatrix_lb.id
   name            = "aviatrix-bepool"
 }
 
+# 6.2. Create load balancer rule
 resource "azurerm_lb_rule" "aviatrix_lb_rule" {
   backend_port                   = 443
   disable_outbound_snat          = true
@@ -202,6 +181,7 @@ resource "azurerm_lb_rule" "aviatrix_lb_rule" {
   resource_group_name            = azurerm_resource_group.aviatrix_controller_rg.name
 }
 
+# 6.3. Create load balancer health probe
 resource "azurerm_lb_probe" "aviatrix_lb_probe" {
   interval_in_seconds = 5
   loadbalancer_id     = azurerm_lb.aviatrix_lb.id

@@ -63,7 +63,7 @@ module "aviatrix_controller_initialize" {
     module.aviatrix_controller_arm
   ]
 }
-##########
+
 data "archive_file" "file_function_app" {
   type        = "zip"
   source_dir  = "./azure-controller"
@@ -98,7 +98,6 @@ resource "azurerm_storage_blob" "aviatrix-app" {
   type                   = "Block"
   source                 = data.archive_file.file_function_app.output_path
 }
-###########
 
 resource "azurerm_application_insights" "application_insights" {
   name                = "${var.controller_name}-function-application-insights"
@@ -178,7 +177,6 @@ resource "azurerm_role_definition" "aviatrix_function_role" {
 
   permissions {
     actions = [
-      "Microsoft.Compute/*/read",
       "Microsoft.Compute/virtualMachines/*",
       "Microsoft.Compute/virtualMachineScaleSets/*",
       "Microsoft.Network/publicIPAddresses/*",
@@ -230,10 +228,9 @@ resource "azurerm_monitor_action_group" "aviatrix_controller_action" {
   azure_function_receiver {
     function_app_resource_id = azurerm_function_app.app.id
     function_name            = azurerm_function_app.app.name
-    #     http_trigger_url         = "https://controller-ha.azurewebsites.net/api/azure-controller-ha?code=xqPRUeK9prQMYs7j9aqEDLkI9wPX6TzO6iktycbudisad0PFuUQ0Ng=="
-    http_trigger_url        = "https://${azurerm_function_app.app.default_hostname}/api/Azure-Controller-HA?code=${data.azurerm_function_app_host_keys.func_keys.default_function_key}"
-    name                    = "func"
-    use_common_alert_schema = false
+    http_trigger_url         = "https://${azurerm_function_app.app.default_hostname}/api/Azure-Controller-HA?code=${data.azurerm_function_app_host_keys.func_keys.default_function_key}"
+    name                     = "func"
+    use_common_alert_schema  = false
   }
 
   email_receiver {
@@ -280,4 +277,3 @@ resource "azurerm_monitor_metric_alert" "aviatrix_controller_alert" {
   }
 
 }
-

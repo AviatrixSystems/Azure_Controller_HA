@@ -6,9 +6,7 @@ controller_vnet_cidr = "10.2.0.0/23"
 controller_subnet_cidr = "10.2.0.0/24"
 incoming_ssl_cidr = ["x.x.x.x"]
 
-
 subscription_id           = "******"
-
 
 controller_virtual_machine_admin_username = "******"
 controller_virtual_machine_admin_password = "******"
