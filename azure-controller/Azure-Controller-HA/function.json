@@ -1,5 +1,5 @@
 {
-  "scriptFile": "__init__.py",
+  "scriptFile": "azure_aviatrix_ha.py",
   "bindings": [
     {
       "authLevel": "anonymous",
