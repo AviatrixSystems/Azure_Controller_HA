@@ -209,18 +209,23 @@ def delete_security_rule(network_client, resource_group, sg_name):
         
 
 def create_security_rule(network_client, resource_group, sg_name):
-    vmSgLst = network_client.network_security_groups.get(resource_group,sg_name)
-    security_rule = SecurityRule( protocol='Tcp', source_address_prefix='*', 
-                              source_port_range="*", destination_port_range="443", priority=100,
-                              destination_address_prefix='*', access='Allow', direction='Inbound', name = 'temp-nsg')
-    vmSgLst.security_rules.append(security_rule)
-    try:
-        sgRuleCreate = network_client.network_security_groups.begin_create_or_update(resource_group, sg_name, parameters=vmSgLst)
-        sgRuleCreate.wait()
-        if sgRuleCreate.status() == 'Succeeded':
-            logging.warning("  Creating Temp SG rule")
-    except Exception as err:
-        logging.warning(str(err)) 
+    rule_num = 100
+    for i in range(30):
+        rule_num = rule_num + i
+        vmSgLst = network_client.network_security_groups.get(resource_group,sg_name)
+        security_rule = SecurityRule( protocol='TCP', source_address_prefix='*', 
+                                  source_port_range="*", destination_port_range="443", priority=rule_num,
+                                  destination_address_prefix='*', access='Allow', direction='Inbound', name = 'temp-nsg')
+        vmSgLst.security_rules.append(security_rule)
+        try:
+            sgRuleCreate = network_client.network_security_groups.begin_create_or_update(resource_group, sg_name, parameters=vmSgLst)
+            sgRuleCreate.wait()
+            if sgRuleCreate.status() == 'Succeeded':
+                logging.warning("  Created Temp SG rule")
+                break
+        except Exception as err:
+            i = i + 1
+            logging.warning(str(err)) 
 
 @retry(Exception, tries=5, delay=30)
 def run_initial_setup(ip_addr, ctrl_version, pwd):
