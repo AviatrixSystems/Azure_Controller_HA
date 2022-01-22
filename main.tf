@@ -21,6 +21,8 @@ resource "random_id" "aviatrix" {
 
 data "azurerm_subscription" "main" {}
 
+data "azurerm_client_config" "current" {}
+
 module "aviatrix_controller_arm" {
   source             = "./modules/aviatrix_controller_arm"
   app_name           = var.app_name
@@ -144,7 +146,8 @@ resource "azurerm_function_app" "app" {
     "func_client_id"                  = azurerm_user_assigned_identity.aviatrix_controller_identity.client_id,
     "avx_tenant_id"                   = module.aviatrix_controller_arm.directory_id,
     "avx_client_id"                   = module.aviatrix_controller_arm.application_id,
-    "avx_secret_key"                  = module.aviatrix_controller_arm.application_key,
+    "keyvault_uri"                    = azurerm_key_vault.aviatrix_key_vault.vault_uri,
+    "keyvault_secret"                 = azurerm_key_vault_secret.aviatrix_key_secret.name,
     "storage_name"                    = azurerm_storage_account.aviatrix-controller-storage.name,
     "container_name"                  = azurerm_storage_container.aviatrix-backup-container.name,
     "scaleset_name"                   = var.controller_name,
@@ -160,7 +163,8 @@ resource "azurerm_function_app" "app" {
     ftps_state       = "Disabled"
   }
   depends_on = [
-    module.aviatrix_controller_initialize
+    module.aviatrix_controller_initialize,
+    azurerm_key_vault_secret.aviatrix_key_secret
   ]
 }
 
@@ -212,9 +216,9 @@ resource "azurerm_role_assignment" "aviatrix_custom_role" {
   scope                = module.aviatrix_controller_build.aviatrix_controller_rg.id
   role_definition_name = azurerm_role_definition.aviatrix_function_role.name
   principal_id         = azurerm_user_assigned_identity.aviatrix_controller_identity.principal_id
-  depends_on = [
-    azurerm_monitor_metric_alert.aviatrix_controller_alert
-  ]
+  # depends_on = [
+  #   azurerm_monitor_metric_alert.aviatrix_controller_alert
+  # ]
 }
 
 
@@ -276,4 +280,47 @@ resource "azurerm_monitor_metric_alert" "aviatrix_controller_alert" {
     }
   }
 
+}
+
+resource "azurerm_key_vault" "aviatrix_key_vault" {
+  name                        = "${var.controller_name}-${random_id.aviatrix.hex}"
+  resource_group_name         = module.aviatrix_controller_build.aviatrix_controller_rg.name
+  location                    = var.location
+  enabled_for_disk_encryption = true
+  tenant_id                   = module.aviatrix_controller_arm.directory_id
+  soft_delete_retention_days  = 7
+  purge_protection_enabled    = false
+  sku_name                    = "standard"
+  access_policy {
+    object_id = data.azurerm_client_config.current.object_id
+    tenant_id = data.azurerm_client_config.current.tenant_id
+
+    secret_permissions = [
+      "Get",
+      "List",
+      "Set",
+      "Delete",
+      "Recover",
+      "Backup",
+      "Restore",
+      "purge",
+    ]
+  }
+}
+
+resource "azurerm_key_vault_access_policy" "aviatrix_policy_1" {
+  key_vault_id = azurerm_key_vault.aviatrix_key_vault.id
+  object_id    = azurerm_user_assigned_identity.aviatrix_controller_identity.principal_id
+  tenant_id    = module.aviatrix_controller_arm.directory_id
+
+  secret_permissions = [
+    "Get",
+    "List",
+  ]
+}
+
+resource "azurerm_key_vault_secret" "aviatrix_key_secret" {
+  name         = "azure"
+  value        = module.aviatrix_controller_arm.application_key
+  key_vault_id = azurerm_key_vault.aviatrix_key_vault.id
 }

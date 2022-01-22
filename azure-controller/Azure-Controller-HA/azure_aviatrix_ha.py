@@ -33,7 +33,8 @@ mask = lambda input: input[0:5] + '*' * 15 if isinstance(input, str) else ''
 
 tenant_id = os.environ["avx_tenant_id"]
 client_id = os.environ["avx_client_id"]
-secret_key = os.environ["avx_secret_key"]
+vault_uri = os.environ["keyvault_uri"]
+vault_secret = os.environ["keyvault_secret"]
 func_client_id = os.environ["func_client_id"]
 storage_name = os.environ["storage_name"]
 container_name = os.environ["container_name"]
@@ -506,12 +507,14 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
     blob_service_client = BlobServiceClient("https://" + storage_name + ".blob.core.windows.net",credentials)
     #### Storage Blob Data Reader, Storage Queue Data Reader permissions required to read the blob data
     container_client = blob_service_client.get_container_client(container_name)
+    secret_client = SecretClient(vault_url=vault_uri, credential=credentials)
+    retrieved_secret = secret_client.get_secret(vault_secret)
     
     cred = {
         'subscription_id': subscription_id,
         'tenant_id': tenant_id,
         'client_id': client_id,
-        'client_secret': secret_key
+        'client_secret': retrieved_secret.value
     }
     
     vm_scaleset_client = compute_client.virtual_machine_scale_sets
