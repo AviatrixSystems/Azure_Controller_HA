@@ -1,0 +1,21 @@
+name: Generate terraform docs
+on:
+  - pull_request
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    name: document-terraform
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+        # https://github.com/terraform-docs/gh-actions
+      - name: render-terraform-module-docs
+        uses: terraform-docs/gh-actions@v0
+        with:
+          find-dir: modules
+          output-file: README.md
+          output-method: inject
+          git-push: "true"
