@@ -13,7 +13,7 @@ jobs:
 
         # https://github.com/terraform-docs/gh-actions
       - name: render-terraform-module-docs
-        uses: terraform-docs/gh-actions@v0
+        uses: terraform-docs/gh-actions@main
         with:
           find-dir: modules
           output-file: README.md
