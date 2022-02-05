@@ -46,3 +46,60 @@ No modules.
 | <a name="output_aviatrix_controller_public_ip_address"></a> [aviatrix\_controller\_public\_ip\_address](#output\_aviatrix\_controller\_public\_ip\_address) | n/a |
 | <a name="output_aviatrix_controller_vnet"></a> [aviatrix\_controller\_vnet](#output\_aviatrix\_controller\_vnet) | n/a |
 | <a name="output_aviatrix_controller_rg"></a> [aviatrix\_controller\_rg](#output\_aviatrix\_controller\_rg) | n/a |
+<!-- BEGIN_TF_DOCS -->
+# Aviatrix Controller Build
+
+This module builds and launches the Aviatrix Controller VM instance.
+
+## Requirements
+
+| Name | Version |
+|------|---------|
+| <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) | >= 2.0 |
+
+## Providers
+
+| Name | Version |
+|------|---------|
+| <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | >= 2.0 |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+|------|------|
+| [azurerm_lb.aviatrix_lb](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/lb) | resource |
+| [azurerm_lb_backend_address_pool.aviatrix_lb_pool](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/lb_backend_address_pool) | resource |
+| [azurerm_lb_probe.aviatrix_lb_probe](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/lb_probe) | resource |
+| [azurerm_lb_rule.aviatrix_lb_rule](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/lb_rule) | resource |
+| [azurerm_network_security_group.aviatrix_controller_nsg](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_security_group) | resource |
+| [azurerm_orchestrated_virtual_machine_scale_set.aviatrix_vm_scale_set](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/orchestrated_virtual_machine_scale_set) | resource |
+| [azurerm_public_ip.aviatrix_lb_public_ip](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/public_ip) | resource |
+| [azurerm_resource_group.aviatrix_controller_rg](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_subnet.aviatrix_controller_subnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet) | resource |
+| [azurerm_virtual_network.aviatrix_controller_vnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network) | resource |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_controller_name"></a> [controller\_name](#input\_controller\_name) | Customized Name for Aviatrix Controller | `string` | n/a | yes |
+| <a name="input_controller_subnet_cidr"></a> [controller\_subnet\_cidr](#input\_controller\_subnet\_cidr) | CIDR for controller subnet. | `string` | `"10.0.0.0/24"` | no |
+| <a name="input_controller_virtual_machine_admin_password"></a> [controller\_virtual\_machine\_admin\_password](#input\_controller\_virtual\_machine\_admin\_password) | Admin Password for the controller virtual machine. | `string` | `"aviatrix1234!"` | no |
+| <a name="input_controller_virtual_machine_admin_username"></a> [controller\_virtual\_machine\_admin\_username](#input\_controller\_virtual\_machine\_admin\_username) | Admin Username for the controller virtual machine. | `string` | `"aviatrix"` | no |
+| <a name="input_controller_virtual_machine_size"></a> [controller\_virtual\_machine\_size](#input\_controller\_virtual\_machine\_size) | Virtual Machine size for the controller. | `string` | `"Standard_A4_v2"` | no |
+| <a name="input_controller_vnet_cidr"></a> [controller\_vnet\_cidr](#input\_controller\_vnet\_cidr) | CIDR for controller VNET. | `string` | `"10.0.0.0/24"` | no |
+| <a name="input_incoming_ssl_cidr"></a> [incoming\_ssl\_cidr](#input\_incoming\_ssl\_cidr) | Incoming cidr for security group used by controller | `list(string)` | n/a | yes |
+| <a name="input_location"></a> [location](#input\_location) | Resource Group Location for Aviatrix Controller | `string` | `"West US"` | no |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| <a name="output_aviatrix_controller_lb_public_ip_address"></a> [aviatrix\_controller\_lb\_public\_ip\_address](#output\_aviatrix\_controller\_lb\_public\_ip\_address) | n/a |
+| <a name="output_aviatrix_controller_rg"></a> [aviatrix\_controller\_rg](#output\_aviatrix\_controller\_rg) | n/a |
+| <a name="output_aviatrix_loadbalancer_id"></a> [aviatrix\_loadbalancer\_id](#output\_aviatrix\_loadbalancer\_id) | n/a |
+<!-- END_TF_DOCS -->
