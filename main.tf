@@ -19,6 +19,15 @@ resource "random_id" "aviatrix" {
   byte_length = 4
 }
 
+resource "random_password" "generate_controller_secret" {
+  length           = 24
+  min_upper        = 2
+  min_numeric      = 2
+  min_special      = 2
+  special          = true
+  override_special = "_%@"
+}
+
 data "azurerm_subscription" "main" {}
 
 data "azurerm_client_config" "current" {}
@@ -74,11 +83,11 @@ module "aviatrix_controller_initialize" {
   ]
 }
 
-data "archive_file" "controller_function_app" {
-  type        = "zip"
-  source_dir  = "./azure-controller"
-  output_path = "azure-controller-ha.zip"
-}
+# data "archive_file" "controller_function_app" {
+#   type        = "zip"
+#   source_dir  = "./azure-controller"
+#   output_path = "azure-controller-ha.zip"
+# }
 
 data "archive_file" "copilot_function_app" {
   type        = "zip"
@@ -107,13 +116,13 @@ resource "azurerm_storage_container" "aviatrix-backup-container" {
   container_access_type = "blob"
 }
 
-resource "azurerm_storage_blob" "aviatrix-controller-app" {
-  name                   = "${filesha256(data.archive_file.controller_function_app.output_path)}.zip"
-  storage_account_name   = azurerm_storage_account.aviatrix-controller-storage.name
-  storage_container_name = azurerm_storage_container.aviatrix-function-container.name
-  type                   = "Block"
-  source                 = data.archive_file.controller_function_app.output_path
-}
+# resource "azurerm_storage_blob" "aviatrix-controller-app" {
+#   name                   = "${filesha256(data.archive_file.controller_function_app.output_path)}.zip"
+#   storage_account_name   = azurerm_storage_account.aviatrix-controller-storage.name
+#   storage_container_name = azurerm_storage_container.aviatrix-function-container.name
+#   type                   = "Block"
+#   source                 = data.archive_file.controller_function_app.output_path
+# }
 
 resource "azurerm_storage_blob" "aviatrix-copilot-app" {
   name                   = "${filesha256(data.archive_file.copilot_function_app.output_path)}.zip"
@@ -184,7 +193,7 @@ resource "azurerm_function_app" "app" {
     "PYTHON_ENABLE_WORKER_EXTENSIONS" = "1"
     "ENABLE_ORYX_BUILD"               = "true",
     "FUNCTIONS_WORKER_RUNTIME"        = "python",
-    "WEBSITE_RUN_FROM_PACKAGE"        = "https://${azurerm_storage_account.aviatrix-controller-storage.name}.blob.core.windows.net/${azurerm_storage_container.aviatrix-function-container.name}/${azurerm_storage_blob.aviatrix-controller-app.name}"
+    # "WEBSITE_RUN_FROM_PACKAGE"        = "https://${azurerm_storage_account.aviatrix-controller-storage.name}.blob.core.windows.net/${azurerm_storage_container.aviatrix-function-container.name}/${azurerm_storage_blob.aviatrix-controller-app.name}"
   }
 
   site_config {
@@ -367,19 +376,19 @@ resource "azurerm_monitor_metric_alert" "aviatrix_controller_alert" {
     threshold              = 0
 
     dimension {
-      name     = "BackendPort"
+      name     = "FrontendPort"
       operator = "Include"
       values = [
         "443",
       ]
     }
-    dimension {
-      name     = "BackendIPAddress"
-      operator = "Include"
-      values = [
-        cidrhost(var.controller_subnet_cidr, 4),
-      ]
-    }
+    # dimension {
+    #   name     = "BackendIPAddress"
+    #   operator = "Include"
+    #   values = [
+    #     cidrhost(var.controller_subnet_cidr, 4),
+    #   ]
+    # }
   }
 
 }
@@ -411,19 +420,19 @@ resource "azurerm_monitor_metric_alert" "aviatrix_copilot_alert" {
     threshold              = 0
 
     dimension {
-      name     = "BackendPort"
+      name     = "FrontendPort"
       operator = "Include"
       values = [
-        "443",
+        "8443",
       ]
     }
-    dimension {
-      name     = "BackendIPAddress"
-      operator = "Include"
-      values = [
-        cidrhost(var.controller_subnet_cidr, 5),
-      ]
-    }
+    # dimension {
+    #   name     = "BackendIPAddress"
+    #   operator = "Include"
+    #   values = [
+    #     cidrhost(var.controller_subnet_cidr, 5),
+    #   ]
+    # }
   }
 }
 
@@ -450,4 +459,16 @@ resource "azurerm_key_vault_secret" "aviatrix_key_secret" {
   value        = module.aviatrix_controller_arm.application_key
   key_vault_id = azurerm_key_vault.aviatrix_key_vault.id
   depends_on   = [azurerm_role_assignment.key_vault_pipeline_service_principal]
+}
+
+resource "null_resource" "run_function" {
+  triggers = {
+    # function_id = azurerm_function_app.function_app.id
+    function_id = split(".", azurerm_function_app.app.default_hostname)[0]
+    # test = timestamp()
+  }
+
+  provisioner "local-exec" {
+    command = "cd azure-controller && func azure functionapp publish ${var.controller_name}-app-${random_id.aviatrix.hex}"
+  }
 }
