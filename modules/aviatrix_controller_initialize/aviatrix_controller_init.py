@@ -3,7 +3,7 @@ import logging
 import sys
 import time
 import traceback
-
+import subprocess
 import requests
 
 # The wait time from experience is between 60 to 600 seconds
@@ -22,7 +22,6 @@ def function_handler(event):
     hostname = event["hostname"]
     aviatrix_api_version = event["aviatrix_api_version"]
     aviatrix_api_route = event["aviatrix_api_route"]
-    ucc_private_ip = event["ucc_private_ip"]
     admin_email = event["admin_email"]
     new_admin_password = event["new_admin_password"]
     arm_subscription_id = event["arm_subscription_id"]
@@ -33,6 +32,8 @@ def function_handler(event):
     access_account_name = event["access_account_name"]
     aviatrix_customer_id = event["aviatrix_customer_id"]
     controller_init_version = event["controller_init_version"]
+    scaleset_name = event["scaleset_name"]
+    resource_group_name = event["resource_group_name"]
     wait_time = default_wait_time_for_apache_wakeup
 
     # Reconstruct some parameters
@@ -41,6 +42,10 @@ def function_handler(event):
     api_endpoint_url = (
         "https://" + hostname + "/" + aviatrix_api_version + "/" + aviatrix_api_route
     )
+    logging.info("resource_group_name" + resource_group_name)
+    logging.info("scaleset_name" + scaleset_name)
+    vm_name = get_vm_name(resource_group_name,scaleset_name)
+    ucc_private_ip = private_ip(vm_name)
 
     # Step1. Wait until the rest API service of Aviatrix Controller is up and running
     logging.info(
@@ -186,6 +191,41 @@ def function_handler(event):
     )
     logging.info("END : Create the Access Account based on Azure ARM")
 
+def get_vm_name(rg,scaleset):
+    # Get the details if Azure Marketplace image terms
+    process = subprocess.Popen(
+        [
+            "az",
+            "vmss",
+            "list-instances",
+            "--resource-group",
+            rg,
+            "--name",
+            scaleset,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT
+    )
+    out = process.communicate()[0]
+    py_dict = json.loads(out)
+    return py_dict[0]['name']
+
+def private_ip(name):
+    # Get the details if Azure Marketplace image terms
+    process = subprocess.Popen(
+        [
+            "az",
+            "vm",
+            "list-ip-addresses",
+            "--name",
+            name,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT
+    )
+    out = process.communicate()[0]
+    py_dict = json.loads(out)
+    return py_dict[0]['virtualMachine']['network']['privateIpAddresses'][0]
 
 def wait_until_controller_api_server_is_ready(
     hostname="123.123.123.123",
@@ -828,21 +868,21 @@ if __name__ == "__main__":
     )
 
     hostname = sys.argv[1]
-    ucc_private_ip = sys.argv[2]
-    admin_email = sys.argv[3]
-    new_admin_password = sys.argv[4]
-    arm_subscription_id = sys.argv[5]
-    arm_application_client_id = sys.argv[6]
-    arm_application_client_secret = sys.argv[7]
-    directory_tenant_id = sys.argv[8]
-    account_email = sys.argv[9]
-    access_account_name = sys.argv[10]
-    aviatrix_customer_id = sys.argv[11]
-    controller_version = sys.argv[12]
+    admin_email = sys.argv[2]
+    new_admin_password = sys.argv[3]
+    arm_subscription_id = sys.argv[4]
+    arm_application_client_id = sys.argv[5]
+    arm_application_client_secret = sys.argv[6]
+    directory_tenant_id = sys.argv[7]
+    account_email = sys.argv[8]
+    access_account_name = sys.argv[9]
+    aviatrix_customer_id = sys.argv[10]
+    controller_version = sys.argv[11]
+    scaleset_name = sys.argv[12]
+    resource_group_name = sys.argv[13]
 
     event = {
         "hostname": hostname,
-        "ucc_private_ip": ucc_private_ip,
         "aviatrix_api_version": "v1",
         "aviatrix_api_route": "api",
         "admin_email": admin_email,
@@ -855,6 +895,8 @@ if __name__ == "__main__":
         "account_email": account_email,
         "aviatrix_customer_id": aviatrix_customer_id,
         "access_account_name": access_account_name,
+        "scaleset_name": scaleset_name,
+        "resource_group_name": resource_group_name,
     }
 
     try:
