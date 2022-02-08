@@ -39,7 +39,7 @@ resource "azurerm_subnet" "aviatrix_controller_subnet" {
   var.controller_subnet_cidr]
 }
 
-// 3. Create Public IP Address for LB
+# 3. Create Public IP Address for LB
 resource "azurerm_public_ip" "aviatrix_lb_public_ip" {
   allocation_method   = "Static"
   location            = azurerm_resource_group.aviatrix_controller_rg.location
@@ -48,7 +48,8 @@ resource "azurerm_public_ip" "aviatrix_lb_public_ip" {
   sku                 = "Standard"
 }
 
-// 4. Create the Security Group
+# 4. Create the Security Group
+//  Create the Controller SG
 resource "azurerm_network_security_group" "aviatrix_controller_nsg" {
   location            = azurerm_resource_group.aviatrix_controller_rg.location
   name                = "${var.controller_name}-security-group"
@@ -67,8 +68,32 @@ resource "azurerm_network_security_group" "aviatrix_controller_nsg" {
   }
 }
 
-# 5. Create the virtual machine
-resource "azurerm_orchestrated_virtual_machine_scale_set" "aviatrix_vm_scale_set" {
+//  Create the Copilot SG
+resource "azurerm_network_security_group" "aviatrix_copilot_nsg" {
+  location            = azurerm_resource_group.aviatrix_controller_rg.location
+  name                = "${var.copilot_name}-security-group"
+  resource_group_name = azurerm_resource_group.aviatrix_controller_rg.name
+
+  dynamic "security_rule" {
+    for_each = var.copilot_allowed_cidrs
+    content {
+      access                     = "Allow"
+      direction                  = "Inbound"
+      name                       = security_rule.key
+      priority                   = security_rule.value["priority"]
+      protocol                   = security_rule.value["protocol"]
+      source_port_range          = "*"
+      destination_port_ranges    = security_rule.value["ports"]
+      source_address_prefixes    = security_rule.value["cidrs"]
+      destination_address_prefix = "*"
+    }
+  }
+}
+
+
+# 5. Create the virtual machine Scale Set
+// Controller Scale Set
+resource "azurerm_orchestrated_virtual_machine_scale_set" "aviatrix_controller_scale_set" {
   encryption_at_host_enabled  = false
   instances                   = 1
   location                    = azurerm_resource_group.aviatrix_controller_rg.location
@@ -138,6 +163,89 @@ resource "azurerm_orchestrated_virtual_machine_scale_set" "aviatrix_vm_scale_set
   }
 }
 
+// Copilot Scale Set
+resource "azurerm_orchestrated_virtual_machine_scale_set" "aviatrix_copilot_scale_set" {
+  encryption_at_host_enabled  = false
+  instances                   = 1
+  location                    = azurerm_resource_group.aviatrix_controller_rg.location
+  name                        = var.copilot_name
+  platform_fault_domain_count = 1
+  priority                    = "Regular"
+  resource_group_name         = azurerm_resource_group.aviatrix_controller_rg.name
+  sku_name                    = var.controller_virtual_machine_size
+  zone_balance                = false
+
+  automatic_instance_repair {
+    enabled = false
+  }
+  dynamic "data_disk" {
+    for_each = var.copilot_additional_disks
+    content {
+      caching                   = "ReadWrite"
+      create_option             = "Empty"
+      disk_iops_read_write      = 0
+      disk_mbps_read_write      = 0
+      disk_size_gb              = data_disk.value["disk_size_gb"]
+      lun                       = data_disk.value["lun"]
+      storage_account_type      = "StandardSSD_LRS"
+      write_accelerator_enabled = false
+    }
+  }
+
+  network_interface {
+    dns_servers                   = []
+    enable_accelerated_networking = false
+    enable_ip_forwarding          = false
+    name                          = "${var.copilot_name}-nic01"
+    network_security_group_id     = azurerm_network_security_group.aviatrix_copilot_nsg.id
+    primary                       = true
+
+    ip_configuration {
+      load_balancer_backend_address_pool_ids = [
+        azurerm_lb_backend_address_pool.aviatrix_cplt_lb_pool.id,
+      ]
+      name      = "${var.copilot_name}-nic01"
+      primary   = true
+      subnet_id = azurerm_subnet.aviatrix_controller_subnet.id
+      version   = "IPv4"
+
+      public_ip_address {
+        idle_timeout_in_minutes = 15
+        name                    = "${var.copilot_name}-public-ip"
+      }
+    }
+  }
+
+  os_profile {
+    linux_configuration {
+      admin_username                  = var.copilot_virtual_machine_admin_username
+      admin_password                  = var.copilot_virtual_machine_admin_password
+      computer_name_prefix            = "aviatrix-"
+      disable_password_authentication = false
+      provision_vm_agent              = true
+    }
+  }
+
+  plan {
+    name      = "avx-cplt-byol-01"
+    product   = "aviatrix-copilot"
+    publisher = "aviatrix-systems"
+  }
+
+  source_image_reference {
+    offer     = "aviatrix-copilot"
+    publisher = "aviatrix-systems"
+    sku       = "avx-cplt-byol-01"
+    version   = "latest"
+  }
+
+  os_disk {
+    caching                   = "ReadWrite"
+    storage_account_type      = "Standard_LRS"
+    write_accelerator_enabled = false
+  }
+}
+
 # 6. Create load balancer
 resource "azurerm_lb" "aviatrix_lb" {
   location            = azurerm_resource_group.aviatrix_controller_rg.location
@@ -159,12 +267,20 @@ resource "azurerm_lb" "aviatrix_lb" {
 }
 
 # 6.1. Create load balancer backend pool
+// Controller backend pool
 resource "azurerm_lb_backend_address_pool" "aviatrix_lb_pool" {
   loadbalancer_id = azurerm_lb.aviatrix_lb.id
-  name            = "aviatrix-bepool"
+  name            = "aviatrix-controller-bepool"
+}
+
+// Copilot backend pool
+resource "azurerm_lb_backend_address_pool" "aviatrix_cplt_lb_pool" {
+  loadbalancer_id = azurerm_lb.aviatrix_lb.id
+  name            = "aviatrix-copilot-bepool"
 }
 
 # 6.2. Create load balancer rule
+// Controller
 resource "azurerm_lb_rule" "aviatrix_lb_rule" {
   backend_port                   = 443
   disable_outbound_snat          = true
@@ -174,21 +290,50 @@ resource "azurerm_lb_rule" "aviatrix_lb_rule" {
   frontend_port                  = 443
   idle_timeout_in_minutes        = 4
   loadbalancer_id                = azurerm_lb.aviatrix_lb.id
-  name                           = "aviatrix_lb_rule"
+  name                           = "aviatrix_controller_lb_rule"
   probe_id                       = azurerm_lb_probe.aviatrix_lb_probe.id
   backend_address_pool_ids       = [azurerm_lb_backend_address_pool.aviatrix_lb_pool.id]
-  protocol                       = "Tcp"
+  protocol                       = "TCP"
   resource_group_name            = azurerm_resource_group.aviatrix_controller_rg.name
 }
 
+// Copilot
+resource "azurerm_lb_rule" "aviatrix_copilot_lb_rule" {
+  backend_port                   = 443
+  disable_outbound_snat          = true
+  enable_floating_ip             = false
+  enable_tcp_reset               = false
+  frontend_ip_configuration_name = "aviatrix-FrontEnd"
+  frontend_port                  = 8443
+  idle_timeout_in_minutes        = 4
+  loadbalancer_id                = azurerm_lb.aviatrix_lb.id
+  name                           = "aviatrix_copilot_lb_rule"
+  probe_id                       = azurerm_lb_probe.aviatrix_copilot_lb_probe.id
+  backend_address_pool_ids       = [azurerm_lb_backend_address_pool.aviatrix_cplt_lb_pool.id]
+  protocol                       = "TCP"
+  resource_group_name            = azurerm_resource_group.aviatrix_controller_rg.name
+}
+
+
 # 6.3. Create load balancer health probe
+// Controller
 resource "azurerm_lb_probe" "aviatrix_lb_probe" {
   interval_in_seconds = 5
   loadbalancer_id     = azurerm_lb.aviatrix_lb.id
-  name                = "aviatrix-tcpProbe"
+  name                = "aviatrix-controller-tcpProbe"
   number_of_probes    = 2
   port                = 443
-  protocol            = "Tcp"
+  protocol            = "TCP"
   resource_group_name = azurerm_resource_group.aviatrix_controller_rg.name
 }
 
+// Copilot
+resource "azurerm_lb_probe" "aviatrix_copilot_lb_probe" {
+  interval_in_seconds = 5
+  loadbalancer_id     = azurerm_lb.aviatrix_lb.id
+  name                = "aviatrix-copilot-tcpProbe"
+  number_of_probes    = 2
+  port                = 443
+  protocol            = "TCP"
+  resource_group_name = azurerm_resource_group.aviatrix_controller_rg.name
+}

@@ -63,7 +63,16 @@ the [azurerm](https://registry.terraform.io/providers/hashicorp/azurerm/latest/d
 and [azuread](https://registry.terraform.io/providers/hashicorp/azuread/latest/docs) Terraform providers to decide how
 to authenticate to Azure.
 
-### 3. Applying *.tfvars* configuration
+Pick the subscription you want and use it in the command below.
+
+```shell
+az account set --subscription <subscription_id>
+````
+
+### 3. Azure core tools
+- [Azure Functions Core Tools](https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=v4%2Cwindows%2Ccsharp%2Cportal%2Cbash)
+
+### 4. Applying *.tfvars* configuration
 
 
 ```hcl

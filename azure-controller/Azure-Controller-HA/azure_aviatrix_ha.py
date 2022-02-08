@@ -160,7 +160,7 @@ def function_handler(event):
         api_endpoint_url=api_endpoint_url,
         username="admin",
         password=N_avx_int_conf.AvxPrivIntIP,
-        hide_password=False,
+        hide_password=True,
     )
 
     verify_aviatrix_api_response_login(response=response)
@@ -522,9 +522,11 @@ def has_controller_initialized(
 ):
     request_method = "GET"
     data = {"action": "initial_setup", "subaction": "check", "CID": CID}
+    payload_with_hidden_password = dict(data)
+    payload_with_hidden_password["CID"] = "************"
     logging.info("API endpoint url: %s", str(api_endpoint_url))
     logging.info("Request method is: %s", str(request_method))
-    logging.info("Request payload is : %s", str(json.dumps(obj=data, indent=4)))
+    logging.info("Request payload is : %s", str(json.dumps(obj=payload_with_hidden_password, indent=4)))
 
     response = send_aviatrix_api(
         api_endpoint_url=api_endpoint_url,
@@ -736,10 +738,11 @@ def run_initial_setup(
         "target_version": target_version,
         "subaction": "run",
     }
-
+    payload_with_hidden_password = dict(data)
+    payload_with_hidden_password["CID"] = "********"
     logging.info("API endpoint url: %s", str(api_endpoint_url))
     logging.info("Request method is: %s", str(request_method))
-    logging.info("Request payload is : %s", str(json.dumps(obj=data, indent=4)))
+    logging.info("Request payload is : %s", str(json.dumps(obj=payload_with_hidden_password, indent=4)))
     try:
         response = send_aviatrix_api(
             api_endpoint_url=api_endpoint_url,
@@ -819,15 +822,17 @@ def restore_ctrl_backup(creds, controller_ip, cid, storage, container, blob):
                  "storage_name": storage,
                  "container_name": container,
                  "file_name": blob,
+                 "CID": cid,
+                 "arm_application_client_secret": creds['client_secret'],
                  "arm_subscription_id": creds['subscription_id'],
                  "arm_application_endpoint": creds['tenant_id'],
                  "arm_application_client_id": creds['client_id']
                 }
+    payload_with_hidden_password = dict(post_data)
+    payload_with_hidden_password["CID"] = "********"
+    payload_with_hidden_password["arm_application_client_secret"] = "********"    
     logging.info("Trying to restore backup account with data %s \n" %
-        str(json.dumps(obj=post_data, indent=4)))
-
-    post_data["CID"] = cid
-    post_data["arm_application_client_secret"] = creds['client_secret']
+        str(json.dumps(obj=payload_with_hidden_password, indent=4)))
 
     try:
         response = requests.post(base_url, data=post_data, verify=False)
@@ -851,7 +856,6 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
     )
     logging.info(f"invocation_id : {context.invocation_id}")
     req_body = req.get_json()
-    logging.info(f"invocation_id : {req_body['data']}")
     headers = {"invocation_id": context.invocation_id, "alert_status": req_body['data']['status']}
     if not req_body['data']['status'] == 'Activated':
         logging.warning(f"Alert status type: {req_body['data']['status']}")
@@ -879,7 +883,7 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
         logging.exception("")
     else:
         logging.info("Aviatrix Controller has been initialized successfully")
-        logging.info("\nLoading function completed !!")
+        logging.info("Loading function completed !!")
         return func.HttpResponse(
                 "Failover event completed successfully",
                 headers=headers, status_code=200)

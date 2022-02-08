@@ -1,0 +1,29 @@
+{
+  "functionTimeout": "00:30:00",
+  "version": "2.0",
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "excludedTypes": "Request"
+      }
+    }
+  },
+  "retry": {
+    "strategy": "fixedDelay",
+    "maxRetryCount": 0,
+    "delayInterval": "00:00:30"  
+  },
+  "extensionBundle": {
+    "id": "Microsoft.Azure.Functions.ExtensionBundle",
+    "version": "[2.*, 3.0.0)"
+  },
+  "extensions": {
+    "http": {
+        "routePrefix": "api",
+        "maxOutstandingRequests": 1,
+        "maxConcurrentRequests": 1,
+        "dynamicThrottlesEnabled": false
+    }
+  }
+}
