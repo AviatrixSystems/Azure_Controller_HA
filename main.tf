@@ -419,23 +419,31 @@ resource "azurerm_key_vault_secret" "controller_key_secret" {
 }
 
 resource "null_resource" "run_controller_function" {
-  triggers = {
-    function_id = azurerm_function_app.controller_app.name
-  }
-
   provisioner "local-exec" {
     command = "cd azure-controller && func azure functionapp publish ${var.controller_name}-app-${random_id.aviatrix.hex}"
   }
-  depends_on = [azurerm_function_app.controller_app]
+  depends_on = [time_sleep.controller_function_provision]
 }
 
 resource "null_resource" "run_copilot_function" {
-  triggers = {
-    function_id = azurerm_function_app.copilot_app.name
-  }
-
   provisioner "local-exec" {
     command = "cd azure-copilot && func azure functionapp publish ${var.copilot_name}-app-${random_id.aviatrix.hex}"
   }
-  depends_on = [azurerm_function_app.copilot_app]
+  depends_on = [time_sleep.copilot_function_provision]
+}
+
+resource "time_sleep" "controller_function_provision" {
+  create_duration = "30s"
+
+  triggers = {
+    function_id = azurerm_function_app.controller_app.name
+  }
+}
+
+resource "time_sleep" "copilot_function_provision" {
+  create_duration = "30s"
+
+  triggers = {
+    function_id = azurerm_function_app.copilot_app.name
+  }
 }
