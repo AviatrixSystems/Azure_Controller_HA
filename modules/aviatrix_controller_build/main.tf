@@ -39,15 +39,6 @@ resource "azurerm_subnet" "aviatrix_controller_subnet" {
   var.controller_subnet_cidr]
 }
 
-# //  Create the Copilot Subnet
-# resource "azurerm_subnet" "aviatrix_copilot_subnet" {
-#   name                 = "${var.copilot_name}-subnet"
-#   resource_group_name  = azurerm_resource_group.aviatrix_controller_rg.name
-#   virtual_network_name = azurerm_virtual_network.aviatrix_controller_vnet.name
-#   address_prefixes = [
-#   var.copilot_subnet_cidr]
-# }
-
 # 3. Create Public IP Address for LB
 resource "azurerm_public_ip" "aviatrix_lb_public_ip" {
   allocation_method   = "Static"

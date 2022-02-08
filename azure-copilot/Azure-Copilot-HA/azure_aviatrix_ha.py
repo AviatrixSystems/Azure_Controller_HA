@@ -72,8 +72,6 @@ def function_handler(event):
     vm = Vm(rg,vm_res_client,inst_name)
     data_disks = vm.getDisks()
     for disk in data_disks:
-        logging.info(disk.name)
-        logging.info(disk.create_option)
         if disk.create_option == 'Empty':
             disk.create_option = 'Attach'
 
@@ -112,14 +110,14 @@ def function_handler(event):
     # Add old public ip Association to the new instance
     N_avx_int_conf.addPubIntIPAssoc(old_pub_intf_id)
 
-    # Delete new disks
-    N_vm.deleteDisks(compute_client,N_data_disks)
-
     # Attach old VM disks
     N_vm.attachDisks(data_disks)
 
     # Delete the detached public ip Association to the new instance
     N_avx_int_conf.deletePubIntIP()
+
+    # Delete new disks
+    N_vm.deleteDisks(compute_client,N_data_disks)
 
 class VmScaleSet():
     def __init__(self, vm_ss_client, resource_group, scaleSetName):
@@ -295,7 +293,6 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
     )
     logging.info(f"invocation_id : {context.invocation_id}")
     req_body = req.get_json()
-    logging.info(f"invocation_id : {req_body['data']}")
     headers = {"invocation_id": context.invocation_id, "alert_status": req_body['data']['status']}
     if not req_body['data']['status'] == 'Activated':
         logging.warning(f"Alert status type: {req_body['data']['status']}")
@@ -315,7 +312,7 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
         logging.exception("")
     else:
         logging.info("Aviatrix Copilot has been initialized successfully")
-        logging.info("\nLoading function completed !!")
+        logging.info("Loading function completed !!")
         return func.HttpResponse(
                 "Failover event completed successfully",
                 headers=headers, status_code=200)

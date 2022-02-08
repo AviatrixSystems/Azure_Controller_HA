@@ -89,9 +89,3 @@ variable copilot_allowed_cidrs {
     cidrs    = set(string),
   }))
 }
-
-variable "copilot_disk_size_gb" {
-  type        = number
-  description = "copilot disk size in gb"
-  default     = 20
-}

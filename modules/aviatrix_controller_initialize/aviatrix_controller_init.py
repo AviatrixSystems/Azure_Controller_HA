@@ -44,10 +44,12 @@ def function_handler(event):
     )
     logging.info("resource_group_name" + resource_group_name)
     logging.info("scaleset_name" + scaleset_name)
+
+    # Step1. Get Private IP of the Instance
     vm_name = get_vm_name(resource_group_name,scaleset_name)
     ucc_private_ip = private_ip(vm_name)
 
-    # Step1. Wait until the rest API service of Aviatrix Controller is up and running
+    # Step1.1. Wait until the rest API service of Aviatrix Controller is up and running
     logging.info(
         "START: Wait until API server of Aviatrix Controller is up and running"
     )
@@ -206,9 +208,16 @@ def get_vm_name(rg,scaleset):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT
     )
-    out = process.communicate()[0]
-    py_dict = json.loads(out)
-    return py_dict[0]['name']
+    try:      
+        out = process.communicate()[0]
+        py_dict = json.loads(out)
+        return py_dict[0]['name']
+    except Exception as e:
+        logging.exception(
+            "VM in a scaleset: %s is not available", scaleset
+        )
+        err_msg = str(e)
+        raise AviatrixException(message=err_msg)
 
 def private_ip(name):
     # Get the details if Azure Marketplace image terms
@@ -223,9 +232,16 @@ def private_ip(name):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT
     )
-    out = process.communicate()[0]
-    py_dict = json.loads(out)
-    return py_dict[0]['virtualMachine']['network']['privateIpAddresses'][0]
+    try:
+        out = process.communicate()[0]
+        py_dict = json.loads(out)
+        return py_dict[0]['virtualMachine']['network']['privateIpAddresses'][0]
+    except Exception as e:
+        logging.exception(
+            "Private IP of VM: %s is not available", name
+        )
+        err_msg = str(e)
+        raise AviatrixException(message=err_msg)
 
 def wait_until_controller_api_server_is_ready(
     hostname="123.123.123.123",
@@ -531,10 +547,11 @@ def set_admin_email(
 ):
     request_method = "POST"
     data = {"action": "add_admin_email_addr", "CID": CID, "admin_email": admin_email}
-
+    payload_with_hidden_password = dict(data)
+    payload_with_hidden_password["CID"] = "********"
     logging.info("API endpoint url: %s", str(api_endpoint_url))
     logging.info("Request method is: %s", str(request_method))
-    logging.info("Request payload is : %s", str(json.dumps(obj=data, indent=4)))
+    logging.info("Request payload is : %s", str(json.dumps(obj=payload_with_hidden_password, indent=4)))
 
     response = send_aviatrix_api(
         api_endpoint_url=api_endpoint_url,
@@ -592,8 +609,8 @@ def set_admin_password(
         "new_password": new_admin_password,
     }
     payload_with_hidden_password = dict(data_1st_try)
+    payload_with_hidden_password["CID"] = "********"
     payload_with_hidden_password["new_password"] = "********"
-
     logging.info("API endpoint url: %s", str(api_endpoint_url))
     logging.info("Request method is: %s", str(request_method))
     logging.info(
@@ -628,7 +645,7 @@ def set_admin_password(
     }
     payload_with_hidden_password = dict(data_2nd_try)
     payload_with_hidden_password["password"] = "********"
-
+    payload_with_hidden_password["CID"] = "********"
     logging.info("API endpoint url: %s", str(api_endpoint_url))
     logging.info("Request method is: %s", str(request_method))
     logging.info(
@@ -705,10 +722,12 @@ def run_initial_setup(
         "target_version": target_version,
         "subaction": "run",
     }
+    payload_with_hidden_password = dict(data)
+    payload_with_hidden_password["CID"] = "************"
 
     logging.info("API endpoint url: %s", str(api_endpoint_url))
     logging.info("Request method is: %s", str(request_method))
-    logging.info("Request payload is : %s", str(json.dumps(obj=data, indent=4)))
+    logging.info("Request payload is : %s", str(json.dumps(obj=payload_with_hidden_password, indent=4)))
     try:
         response = send_aviatrix_api(
             api_endpoint_url=api_endpoint_url,
@@ -765,9 +784,13 @@ def set_aviatrix_customer_id(
     request_method = "POST"
     data = {"action": "setup_customer_id", "CID": CID, "customer_id": customer_id}
 
+    payload_with_hidden_password = dict(data)
+    payload_with_hidden_password["customer_id"] = "************"
+    payload_with_hidden_password["CID"] = "************"
+
     logging.info("API endpoint url: %s", str(api_endpoint_url))
     logging.info("Request method is: %s", str(request_method))
-    logging.info("Request payload is : %s", str(json.dumps(obj=data, indent=4)))
+    logging.info("Request payload is : %s", str(json.dumps(obj=payload_with_hidden_password, indent=4)))
 
     response = send_aviatrix_api(
         api_endpoint_url=api_endpoint_url,
@@ -805,6 +828,7 @@ def create_access_account(
     }
 
     payload_with_hidden_password = dict(data)
+    payload_with_hidden_password["CID"] = "************"
     payload_with_hidden_password["account_password"] = "************"
     payload_with_hidden_password["arm_application_client_secret"] = "************"
     logging.info("API endpoint url: %s", str(api_endpoint_url))

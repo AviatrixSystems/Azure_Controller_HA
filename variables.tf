@@ -32,6 +32,7 @@ variable "avx_controller_admin_email" {
 variable "avx_controller_admin_password" {
   type        = string
   description = "aviatrix controller admin password"
+  default     = ""
 }
 
 variable "controller_name" {
@@ -59,7 +60,7 @@ variable "controller_virtual_machine_admin_username" {
 variable "controller_virtual_machine_admin_password" {
   type        = string
   description = "Admin Password for the controller virtual machine."
-  default     = "aviatrix1234!"
+  default     = ""
 }
 
 variable "controller_virtual_machine_size" {
@@ -96,12 +97,6 @@ variable "copilot_name" {
   description = "Customized Name for Aviatrix Copilot"
 }
 
-# variable "copilot_subnet_cidr" {
-#   type        = string
-#   description = "CIDR for copilot subnet"
-#   default     = "10.0.0.128/25"
-# }
-
 variable "copilot_virtual_machine_admin_username" {
   type        = string
   description = "Admin Username for the controller virtual machine."
@@ -111,7 +106,7 @@ variable "copilot_virtual_machine_admin_username" {
 variable "copilot_virtual_machine_admin_password" {
   type        = string
   description = "Admin Password for the controller virtual machine."
-  default     = "aviatrix1234!"
+  default     = ""
 }
 
 variable "copilot_virtual_machine_size" {
@@ -127,12 +122,6 @@ variable "copilot_allowed_cidrs" {
     ports    = set(string),
     cidrs    = set(string),
   }))
-}
-
-variable "copilot_disk_size_gb" {
-  type        = number
-  description = "copilot disk size in gb"
-  default     = 20
 }
 
 variable "copilot_additional_disks" {
