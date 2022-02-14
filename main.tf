@@ -6,7 +6,7 @@ terraform {
     }
     azuread = {
       source  = "hashicorp/azuread"
-      version = "~> 1.0"
+      version = "~> 2.0"
     }
     null = {
       source = "hashicorp/null"
@@ -20,6 +20,7 @@ resource "random_id" "aviatrix" {
 }
 
 resource "random_password" "generate_controller_secret" {
+  count            = var.avx_controller_admin_password == "" ? 1 : 0
   length           = 24
   min_upper        = 2
   min_numeric      = 2
@@ -32,190 +33,297 @@ data "azurerm_subscription" "main" {}
 
 data "azurerm_client_config" "current" {}
 
+# 1.0. Create Custom Service Principal for Aviatrix Controller
 module "aviatrix_controller_arm" {
-  source             = "./modules/aviatrix_controller_arm"
-  app_name           = var.app_name
+  source = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure" #TODO: Change this to main repo when done testing.
+  # source = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure"
+  app_name           = var.to_be_created_service_principal_name
   create_custom_role = var.create_custom_role
 }
 
-module "aviatrix_controller_build" {
-  source = "./modules/aviatrix_controller_build"
-  // please do not use special characters such as `\/"[]:|<>+=;,?*@&~!#$%^()_{}'` in the controller_name
-  controller_name                           = var.controller_name
-  location                                  = var.location
-  controller_vnet_cidr                      = var.controller_vnet_cidr
-  controller_subnet_cidr                    = var.controller_subnet_cidr
-  controller_virtual_machine_admin_username = var.controller_virtual_machine_admin_username
-  controller_virtual_machine_admin_password = var.controller_virtual_machine_admin_password == "" ? random_password.generate_controller_secret.result : var.controller_virtual_machine_admin_password
-  controller_virtual_machine_size           = var.controller_virtual_machine_size
-  incoming_ssl_cidr                         = var.incoming_ssl_cidr
-  copilot_name                              = var.copilot_name
-  copilot_virtual_machine_admin_username    = var.copilot_virtual_machine_admin_username
-  copilot_virtual_machine_admin_password    = var.copilot_virtual_machine_admin_password == "" ? random_password.generate_controller_secret.result : var.copilot_virtual_machine_admin_password
-  copilot_virtual_machine_size              = var.copilot_virtual_machine_size
-  copilot_additional_disks                  = var.copilot_additional_disks
-  copilot_allowed_cidrs                     = var.copilot_allowed_cidrs
-  depends_on = [
-    module.aviatrix_controller_arm
-  ]
+# 2.0. Create the Resource Group
+resource "azurerm_resource_group" "aviatrix_rg" {
+  location = var.location
+  name     = var.resource_group_name
 }
 
-module "aviatrix_controller_initialize" {
-  source                        = "./modules/aviatrix_controller_initialize"
-  avx_controller_public_ip      = module.aviatrix_controller_build.aviatrix_controller_lb_public_ip_address
-  avx_controller_name           = var.controller_name
-  avx_controller_admin_email    = var.avx_controller_admin_email
-  avx_controller_admin_password = var.avx_controller_admin_password == "" ? random_password.generate_controller_secret.result : var.avx_controller_admin_password
-  arm_subscription_id           = module.aviatrix_controller_arm.subscription_id
-  arm_application_id            = module.aviatrix_controller_arm.application_id
-  arm_application_key           = module.aviatrix_controller_arm.application_key
-  directory_id                  = module.aviatrix_controller_arm.directory_id
-  account_email                 = var.account_email
-  access_account_name           = var.access_account_name
-  aviatrix_customer_id          = var.aviatrix_customer_id
-  controller_version            = var.controller_version
-  resource_group_name           = module.aviatrix_controller_build.aviatrix_controller_rg.name
-
-  depends_on = [
-    module.aviatrix_controller_arm, module.aviatrix_controller_build
-  ]
-}
-
-
-resource "azurerm_storage_account" "aviatrix-controller-storage" {
-  name                     = lower("${var.controller_name}${random_id.aviatrix.hex}")
-  resource_group_name      = module.aviatrix_controller_build.aviatrix_controller_rg.name
-  location                 = var.location
+# 3.0. Create Storage Account
+resource "azurerm_storage_account" "aviatrix_controller_storage" {
+  name                     = var.storage_account_name == "" ? "aviatrixstorage${random_id.aviatrix.hex}" : var.storage_account_name
+  resource_group_name      = azurerm_resource_group.aviatrix_rg.name
+  location                 = azurerm_resource_group.aviatrix_rg.location
   account_tier             = "Standard"
   allow_blob_public_access = true
   account_replication_type = "LRS"
 }
 
-resource "azurerm_storage_container" "aviatrix-backup-container" {
-  name                  = lower("${var.controller_name}-backup")
-  storage_account_name  = azurerm_storage_account.aviatrix-controller-storage.name
+# 3.1. Create Storage Container
+resource "azurerm_storage_container" "aviatrix_backup_container" {
+  name                  = lower("${var.scale_set_controller_name}-backup")
+  storage_account_name  = azurerm_storage_account.aviatrix_controller_storage.name
   container_access_type = "blob"
 }
 
-resource "azurerm_application_insights" "application_insights" {
-  name                = "aviatrix-function-application-insights"
-  location            = var.location
-  resource_group_name = module.aviatrix_controller_build.aviatrix_controller_rg.name
-  application_type    = "web"
+# 4.0. Create Key Vault
+resource "azurerm_key_vault" "aviatrix_key_vault" {
+  name                        = var.key_vault_name == "" ? "aviatrix-key-vault${random_id.aviatrix.hex}" : var.key_vault_name
+  resource_group_name         = azurerm_resource_group.aviatrix_rg.name
+  location                    = azurerm_resource_group.aviatrix_rg.location
+  enabled_for_disk_encryption = true
+  tenant_id                   = module.aviatrix_controller_arm.directory_id
+  soft_delete_retention_days  = 7
+  purge_protection_enabled    = false
+  sku_name                    = "standard"
+  enable_rbac_authorization   = true
 }
 
-resource "azurerm_app_service_plan" "controller_app_service_plan" {
-  name                = "aviatrix-function-app-service-plan"
-  resource_group_name = module.aviatrix_controller_build.aviatrix_controller_rg.name
-  location            = var.location
-  kind                = "elastic"
-  reserved            = true
-  sku {
-    tier = "ElasticPremium"
-    size = "EP1"
-  }
+# 4.1. Allow Current Object ID to add Secrets to Key Vault
+resource "azurerm_role_assignment" "key_vault_pipeline_service_principal" {
+  scope                = azurerm_key_vault.aviatrix_key_vault.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = data.azurerm_client_config.current.object_id
 }
 
-data "azurerm_function_app_host_keys" "func_keys" {
-  name                = azurerm_function_app.controller_app.name
-  resource_group_name = module.aviatrix_controller_build.aviatrix_controller_rg.name
-
-  depends_on = [azurerm_function_app.controller_app]
-}
-
-data "azurerm_function_app_host_keys" "copilot_func_keys" {
-  name                = azurerm_function_app.copilot_app.name
-  resource_group_name = module.aviatrix_controller_build.aviatrix_controller_rg.name
-
-  depends_on = [azurerm_function_app.copilot_app]
-}
-
-resource "azurerm_function_app" "controller_app" {
-  name                       = "${var.controller_name}-app-${random_id.aviatrix.hex}"
-  location                   = var.location
-  resource_group_name        = module.aviatrix_controller_build.aviatrix_controller_rg.name
-  app_service_plan_id        = azurerm_app_service_plan.controller_app_service_plan.id
-  storage_account_name       = azurerm_storage_account.aviatrix-controller-storage.name
-  storage_account_access_key = azurerm_storage_account.aviatrix-controller-storage.primary_access_key
-  identity {
-    type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.aviatrix_identity.id]
-  }
-  os_type = "linux"
-  version = "~4"
-
-  app_settings = {
-    "APPINSIGHTS_INSTRUMENTATIONKEY"  = azurerm_application_insights.application_insights.instrumentation_key,
-    "func_client_id"                  = azurerm_user_assigned_identity.aviatrix_identity.client_id,
-    "avx_tenant_id"                   = module.aviatrix_controller_arm.directory_id,
-    "avx_client_id"                   = module.aviatrix_controller_arm.application_id,
-    "keyvault_uri"                    = azurerm_key_vault.aviatrix_key_vault.vault_uri,
-    "keyvault_secret"                 = azurerm_key_vault_secret.aviatrix_arm_secret.name,
-    "storage_name"                    = azurerm_storage_account.aviatrix-controller-storage.name,
-    "container_name"                  = azurerm_storage_container.aviatrix-backup-container.name,
-    "scaleset_name"                   = var.controller_name,
-    "SCM_DO_BUILD_DURING_DEPLOYMENT"  = "true",
-    "PYTHON_ENABLE_WORKER_EXTENSIONS" = "1"
-    "ENABLE_ORYX_BUILD"               = "true",
-    "FUNCTIONS_WORKER_RUNTIME"        = "python",
-  }
-
-  site_config {
-    linux_fx_version = "Python|3.9"
-    ftps_state       = "Disabled"
-  }
+# 4.2. Add Service Principal Secret to Key Vault
+resource "azurerm_key_vault_secret" "aviatrix_arm_secret" {
   depends_on = [
-    module.aviatrix_controller_initialize,
-    azurerm_key_vault_secret.aviatrix_arm_secret
+    azurerm_role_assignment.key_vault_pipeline_service_principal
   ]
+  name         = "aviatrix-arm-key"
+  value        = module.aviatrix_controller_arm.application_key
+  key_vault_id = azurerm_key_vault.aviatrix_key_vault.id
 }
 
-resource "azurerm_function_app" "copilot_app" {
-  name                       = "${var.copilot_name}-app-${random_id.aviatrix.hex}"
-  location                   = var.location
-  resource_group_name        = module.aviatrix_controller_build.aviatrix_controller_rg.name
-  app_service_plan_id        = azurerm_app_service_plan.controller_app_service_plan.id
-  storage_account_name       = azurerm_storage_account.aviatrix-controller-storage.name
-  storage_account_access_key = azurerm_storage_account.aviatrix-controller-storage.primary_access_key
-  identity {
-    type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.aviatrix_identity.id]
-  }
-  os_type = "linux"
-  version = "~4"
-
-  app_settings = {
-    "APPINSIGHTS_INSTRUMENTATIONKEY"  = azurerm_application_insights.application_insights.instrumentation_key,
-    "func_client_id"                  = azurerm_user_assigned_identity.aviatrix_identity.client_id,
-    "avx_tenant_id"                   = module.aviatrix_controller_arm.directory_id,
-    "avx_client_id"                   = module.aviatrix_controller_arm.application_id,
-    "copilot_scaleset_name"           = var.copilot_name,
-    "SCM_DO_BUILD_DURING_DEPLOYMENT"  = "true",
-    "PYTHON_ENABLE_WORKER_EXTENSIONS" = "1"
-    "ENABLE_ORYX_BUILD"               = "true",
-    "FUNCTIONS_WORKER_RUNTIME"        = "python",
-  }
-
-  site_config {
-    linux_fx_version = "Python|3.9"
-    ftps_state       = "Disabled"
-  }
+# 4.3. Add Controller Password to Key Vault
+resource "azurerm_key_vault_secret" "controller_key_secret" {
   depends_on = [
-    module.aviatrix_controller_initialize,
-    azurerm_key_vault_secret.aviatrix_arm_secret
+    azurerm_role_assignment.key_vault_pipeline_service_principal
   ]
+  name         = "aviatrix-controller-key"
+  value        = var.avx_controller_admin_password == "" ? random_password.generate_controller_secret[0].result : var.avx_controller_admin_password
+  key_vault_id = azurerm_key_vault.aviatrix_key_vault.id
 }
 
-resource "azurerm_user_assigned_identity" "aviatrix_identity" {
-  resource_group_name = module.aviatrix_controller_build.aviatrix_controller_rg.name
-  location            = var.location
-  name                = "aviatrix-function-identity"
+# 5.0. Create Virtual Network
+resource "azurerm_virtual_network" "aviatrix_vnet" {
+  name                = var.virtual_network_name
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  location            = azurerm_resource_group.aviatrix_rg.location
+  address_space       = [var.virtual_network_cidr]
 }
 
+# 5.1. Create Controller Subnet
+resource "azurerm_subnet" "aviatrix_controller_subnet" {
+  name                 = var.subnet_name
+  resource_group_name  = azurerm_resource_group.aviatrix_rg.name
+  virtual_network_name = azurerm_virtual_network.aviatrix_vnet.name
+  address_prefixes     = [var.subnet_cidr]
+}
+
+# 6.0. Create Public IP Address for LB
+resource "azurerm_public_ip" "aviatrix_lb_public_ip" {
+  name                = var.load_balancer_frontend_public_ip_name
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  location            = azurerm_resource_group.aviatrix_rg.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+# 6.1. Create load balancer
+resource "azurerm_lb" "aviatrix_lb" {
+  name                = var.load_balancer_name
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  location            = azurerm_resource_group.aviatrix_rg.location
+  sku                 = "Standard"
+  sku_tier            = "Regional"
+  tags                = {}
+
+  frontend_ip_configuration {
+    name                          = var.load_balancer_frontend_name
+    availability_zone             = "No-Zone"
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.aviatrix_lb_public_ip.id
+  }
+}
+
+# 6.2. Create Controller load balancer backend pool
+resource "azurerm_lb_backend_address_pool" "aviatrix_controller_lb_backend_pool" {
+  loadbalancer_id = azurerm_lb.aviatrix_lb.id
+  name            = var.load_balancer_controller_backend_pool_name
+}
+
+# 6.3. Create Controller load balancer health probe
+resource "azurerm_lb_probe" "aviatrix_controller_lb_probe" {
+  name                = var.load_balancer_controller_health_probe_name
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  loadbalancer_id     = azurerm_lb.aviatrix_lb.id
+  interval_in_seconds = 5
+  number_of_probes    = 2
+  port                = 443
+  protocol            = "TCP"
+}
+
+# 6.4. Create Controller load balancer rule
+resource "azurerm_lb_rule" "aviatrix_controller_lb_rule" {
+  name                           = var.load_balancer_controller_rule_name
+  resource_group_name            = azurerm_resource_group.aviatrix_rg.name
+  loadbalancer_id                = azurerm_lb.aviatrix_lb.id
+  frontend_ip_configuration_name = azurerm_lb.aviatrix_lb.frontend_ip_configuration[0].name
+  probe_id                       = azurerm_lb_probe.aviatrix_controller_lb_probe.id
+  backend_address_pool_ids       = [azurerm_lb_backend_address_pool.aviatrix_controller_lb_backend_pool.id]
+  frontend_port                  = 443
+  backend_port                   = 443
+  idle_timeout_in_minutes        = 4
+  protocol                       = "TCP"
+  disable_outbound_snat          = true
+  enable_floating_ip             = false
+  enable_tcp_reset               = false
+}
+
+# 7.0. Create the Controller Security Group
+resource "azurerm_network_security_group" "aviatrix_controller_nsg" {
+  name                = var.network_security_group_controller_name
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  location            = azurerm_resource_group.aviatrix_rg.location
+  security_rule {
+    access                     = "Allow"
+    direction                  = "Inbound"
+    name                       = "https"
+    priority                   = "200"
+    protocol                   = "TCP"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefixes    = var.aviatrix_controller_security_group_allowed_ips
+    destination_address_prefix = "*"
+    description                = "httpsInboundToControllerScaleSet"
+  }
+}
+
+# 8.0 Deploy Aviatrix Controller Scale Set
+resource "azurerm_orchestrated_virtual_machine_scale_set" "aviatrix_scale_set" {
+  name                        = var.scale_set_controller_name
+  resource_group_name         = azurerm_resource_group.aviatrix_rg.name
+  location                    = azurerm_resource_group.aviatrix_rg.location
+  sku_name                    = var.controller_virtual_machine_size
+  priority                    = "Regular"
+  instances                   = 1
+  platform_fault_domain_count = 1
+  encryption_at_host_enabled  = false
+  zone_balance                = false
+  tags = {
+    "aviatrix_image" = "aviatrix-controller"
+  }
+
+  automatic_instance_repair {
+    enabled = false
+  }
+
+  network_interface {
+    dns_servers                   = []
+    enable_accelerated_networking = false
+    enable_ip_forwarding          = false
+    name                          = "${var.scale_set_controller_name}-nic01"
+    network_security_group_id     = azurerm_network_security_group.aviatrix_controller_nsg.id
+    primary                       = true
+
+    ip_configuration {
+      load_balancer_backend_address_pool_ids = [
+        azurerm_lb_backend_address_pool.aviatrix_controller_lb_backend_pool.id
+      ]
+      name      = "${var.scale_set_controller_name}-nic01"
+      primary   = true
+      subnet_id = azurerm_subnet.aviatrix_controller_subnet.id
+      version   = "IPv4"
+
+      public_ip_address {
+        idle_timeout_in_minutes = 15
+        name                    = "${var.scale_set_controller_name}-public-ip"
+      }
+    }
+  }
+
+  os_profile {
+    linux_configuration {
+      computer_name_prefix            = "aviatrix-"
+      disable_password_authentication = var.controller_public_ssh_key == "" ? false : true
+      admin_username                  = var.controller_virtual_machine_admin_username
+      admin_password                  = length(var.controller_public_ssh_key) == 0 ? var.controller_virtual_machine_admin_password : null
+      provision_vm_agent              = true
+      dynamic "admin_ssh_key" {
+        for_each = var.controller_public_ssh_key == "" ? [] : [true]
+        content {
+          public_key = var.controller_public_ssh_key
+          username   = var.controller_virtual_machine_admin_username
+        }
+      }
+    }
+  }
+
+  plan {
+    name      = "aviatrix-enterprise-bundle-byol"
+    product   = "aviatrix-bundle-payg"
+    publisher = "aviatrix-systems"
+  }
+
+  source_image_reference {
+    offer     = "aviatrix-bundle-payg"
+    publisher = "aviatrix-systems"
+    sku       = "aviatrix-enterprise-bundle-byol"
+    version   = "latest"
+  }
+
+  os_disk {
+    caching                   = "ReadWrite"
+    disk_size_gb              = 30
+    storage_account_type      = "Standard_LRS"
+    write_accelerator_enabled = false
+  }
+}
+
+# 8.1. Get VMSS Instance by Tag
+data "azurerm_resources" "get_vmss_instance" {
+  depends_on = [
+    azurerm_orchestrated_virtual_machine_scale_set.aviatrix_scale_set
+  ]
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  type                = "Microsoft.Compute/virtualMachines"
+
+  required_tags = {
+    aviatrix_image = "aviatrix-controller"
+  }
+}
+
+# 8.2. Get Private IP of VMSS Controller Instance
+data "azurerm_virtual_machine" "vm_data" {
+  name                = data.azurerm_resources.get_vmss_instance.resources[0].name
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+}
+
+# 9.0. Initial Controller Configurations (occurs only on first deployment)
+module "aviatrix_controller_initialize" {
+  # source = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize"
+  source                        = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize" #TODO: Change this to main repo when done testing.
+  avx_controller_public_ip      = azurerm_public_ip.aviatrix_lb_public_ip.ip_address
+  avx_controller_private_ip     = data.azurerm_virtual_machine.vm_data.private_ip_address
+  avx_controller_admin_email    = var.avx_controller_admin_email
+  avx_controller_admin_password = var.avx_controller_admin_password == "" ? random_password.generate_controller_secret[0].result : var.avx_controller_admin_password
+  arm_subscription_id           = module.aviatrix_controller_arm.subscription_id
+  arm_application_id            = module.aviatrix_controller_arm.application_id
+  arm_application_key           = module.aviatrix_controller_arm.application_key
+  directory_id                  = module.aviatrix_controller_arm.directory_id
+  account_email                 = var.avx_account_email
+  access_account_name           = var.avx_access_account_name
+  aviatrix_customer_id          = var.avx_aviatrix_customer_id
+  controller_version            = var.avx_controller_version
+}
+
+### RBAC For Function App ###
+
+# 10.0. Create Custom Role Definition for Function App
 resource "azurerm_role_definition" "aviatrix_function_role" {
-  name        = "${var.controller_name}-function-custom-role"
-  scope       = module.aviatrix_controller_build.aviatrix_controller_rg.id
-  description = "Custom role for Aviatrix Controller. Created via Terraform"
+  name        = var.aviatrix_function_app_custom_role_name
+  scope       = azurerm_resource_group.aviatrix_rg.id
+  description = "Custom role for Aviatrix Controller Function App. Created via Terraform"
 
   permissions {
     actions = [
@@ -234,44 +342,139 @@ resource "azurerm_role_definition" "aviatrix_function_role" {
   }
 
   assignable_scopes = [
-    module.aviatrix_controller_build.aviatrix_controller_rg.id,
+    azurerm_resource_group.aviatrix_rg.id
   ]
 }
 
+# 10.1. Create User Assigned Identity for Function App
+resource "azurerm_user_assigned_identity" "aviatrix_identity" {
+  name                = var.user_assigned_identity_name
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  location            = azurerm_resource_group.aviatrix_rg.location
+}
 
+# 10.2. Sleep 1 Minute Before Assigning Role to User Identity
+resource "time_sleep" "sleep_1m_user_identity" {
+  create_duration = "1m"
+
+  triggers = {
+    function_id = azurerm_user_assigned_identity.aviatrix_identity.principal_id
+  }
+}
+
+# 10.3. Assign User Identity to Custom Role
+resource "azurerm_role_assignment" "aviatrix_custom_role" {
+  depends_on = [
+    time_sleep.sleep_1m_user_identity
+  ]
+  scope                = azurerm_resource_group.aviatrix_rg.id
+  role_definition_id   = azurerm_role_definition.aviatrix_function_role.role_definition_resource_id
+  principal_id         = azurerm_user_assigned_identity.aviatrix_identity.principal_id
+}
+
+# 10.4. Assign User Identity to Storage Blob Reader Role
 resource "azurerm_role_assignment" "aviatrix_function_blob_role" {
-  scope                = azurerm_storage_account.aviatrix-controller-storage.id
+  scope                = azurerm_storage_account.aviatrix_controller_storage.id
   role_definition_name = "Storage Blob Data Reader"
   principal_id         = azurerm_user_assigned_identity.aviatrix_identity.principal_id
 }
 
-resource "azurerm_role_assignment" "aviatrix_function_queue_role" {
-  scope                = azurerm_storage_account.aviatrix-controller-storage.id
-  role_definition_name = "Storage Queue Data Reader"
-  principal_id         = azurerm_user_assigned_identity.aviatrix_identity.principal_id
-}
-
-resource "azurerm_role_assignment" "aviatrix_custom_role" {
-  scope                = module.aviatrix_controller_build.aviatrix_controller_rg.id
-  role_definition_name = azurerm_role_definition.aviatrix_function_role.name
-  principal_id         = azurerm_user_assigned_identity.aviatrix_identity.principal_id
-  depends_on = [
-    azurerm_monitor_metric_alert.aviatrix_controller_alert
-  ]
-}
-
+# 10.5. Assign User Identity to Key Vault Secrets User Role
 resource "azurerm_role_assignment" "aviatrix_function_vault_role" {
+  depends_on = [
+    azurerm_role_assignment.key_vault_pipeline_service_principal
+  ]
   scope                = azurerm_key_vault.aviatrix_key_vault.id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.aviatrix_identity.principal_id
-  depends_on           = [azurerm_role_assignment.key_vault_pipeline_service_principal]
 }
 
+# resource "azurerm_role_assignment" "aviatrix_function_queue_role" {
+#   scope                = azurerm_storage_account.aviatrix_controller_storage.id
+#   role_definition_name = "Storage Queue Data Reader"
+#   principal_id         = azurerm_user_assigned_identity.aviatrix_identity.principal_id
+# }
+
+
+### Deploy Function App Resources ###
+
+# 11.0. Deploy Application Insights
+resource "azurerm_application_insights" "application_insights" {
+  name                = var.application_insights_name
+  location            = azurerm_resource_group.aviatrix_rg.location
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  application_type    = "web"
+}
+
+# 11.1. Deploy App Service Plan
+resource "azurerm_app_service_plan" "controller_app_service_plan" {
+  name                = var.app_service_plan_name
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  location            = azurerm_resource_group.aviatrix_rg.location
+  kind                = "elastic"
+  reserved            = true
+
+  sku {
+    tier = "ElasticPremium"
+    size = "EP1"
+  }
+}
+
+# 11.2. Deploy Controller Function App
+resource "azurerm_function_app" "controller_app" {
+  name                       = var.function_app_name
+  resource_group_name        = azurerm_resource_group.aviatrix_rg.name
+  location                   = azurerm_resource_group.aviatrix_rg.location
+  app_service_plan_id        = azurerm_app_service_plan.controller_app_service_plan.id
+  storage_account_name       = azurerm_storage_account.aviatrix_controller_storage.name
+  storage_account_access_key = azurerm_storage_account.aviatrix_controller_storage.primary_access_key
+  os_type                    = "linux"
+  version                    = "~4"
+
+  identity {
+    type = "UserAssigned"
+    identity_ids = [
+      azurerm_user_assigned_identity.aviatrix_identity.id
+    ]
+  }
+
+  app_settings = {
+    "APPINSIGHTS_INSTRUMENTATIONKEY"  = azurerm_application_insights.application_insights.instrumentation_key,
+    "func_client_id"                  = azurerm_user_assigned_identity.aviatrix_identity.client_id,
+    "avx_tenant_id"                   = module.aviatrix_controller_arm.directory_id,
+    "avx_client_id"                   = module.aviatrix_controller_arm.application_id,
+    "keyvault_uri"                    = azurerm_key_vault.aviatrix_key_vault.vault_uri,
+    "keyvault_secret"                 = azurerm_key_vault_secret.aviatrix_arm_secret.name,
+    "storage_name"                    = azurerm_storage_account.aviatrix_controller_storage.name,
+    "container_name"                  = azurerm_storage_container.aviatrix_backup_container.name,
+    "scaleset_name"                   = azurerm_orchestrated_virtual_machine_scale_set.aviatrix_scale_set.name,
+    "SCM_DO_BUILD_DURING_DEPLOYMENT"  = "true",
+    "PYTHON_ENABLE_WORKER_EXTENSIONS" = "1"
+    "ENABLE_ORYX_BUILD"               = "true",
+    "FUNCTIONS_WORKER_RUNTIME"        = "python",
+  }
+
+  site_config {
+    linux_fx_version = "Python|3.9"
+    ftps_state       = "Disabled"
+  }
+  depends_on = [
+    module.aviatrix_controller_initialize
+  ]
+}
+
+# 11.3. Retrieve Function App Keys
+data "azurerm_function_app_host_keys" "func_keys" {
+  name                = azurerm_function_app.controller_app.name
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+}
+
+# 11.4. Create Alerting Action Group
 resource "azurerm_monitor_action_group" "aviatrix_controller_action" {
   enabled             = true
-  name                = "${var.controller_name}-action"
-  resource_group_name = module.aviatrix_controller_build.aviatrix_controller_rg.name
-  short_name          = "ctrl-action"
+  name                = var.action_group_name
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  short_name          = "avx-ctrl"
   tags                = {}
 
   azure_function_receiver {
@@ -283,43 +486,21 @@ resource "azurerm_monitor_action_group" "aviatrix_controller_action" {
   }
 
   email_receiver {
-    email_address           = var.account_email
+    email_address           = var.avx_account_email
     name                    = "sendtoadmin"
     use_common_alert_schema = false
   }
-
 }
 
-resource "azurerm_monitor_action_group" "aviatrix_copilot_action" {
-  enabled             = true
-  name                = "${var.copilot_name}-action"
-  resource_group_name = module.aviatrix_controller_build.aviatrix_controller_rg.name
-  short_name          = "cplt-action"
-  tags                = {}
-
-  azure_function_receiver {
-    function_app_resource_id = azurerm_function_app.controller_app.id
-    function_name            = azurerm_function_app.copilot_app.name
-    http_trigger_url         = "https://${azurerm_function_app.copilot_app.default_hostname}/api/Azure-Copilot-HA?code=${data.azurerm_function_app_host_keys.copilot_func_keys.default_function_key}"
-    name                     = "copilot-func"
-    use_common_alert_schema  = false
-  }
-
-  email_receiver {
-    email_address           = var.account_email
-    name                    = "sendtoadmin"
-    use_common_alert_schema = false
-  }
-
-}
+# 11.5 Create Metric Alert for Load Balancer Health
 resource "azurerm_monitor_metric_alert" "aviatrix_controller_alert" {
   auto_mitigate       = true
   enabled             = true
   frequency           = "PT1M"
-  name                = "${var.controller_name}-HealthCheck"
-  resource_group_name = module.aviatrix_controller_build.aviatrix_controller_rg.name
+  name                = "${var.scale_set_controller_name}-HealthCheck"
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
   scopes = [
-    module.aviatrix_controller_build.aviatrix_loadbalancer_id,
+    azurerm_lb.aviatrix_lb.id
   ]
   severity             = 0
   tags                 = {}
@@ -342,108 +523,27 @@ resource "azurerm_monitor_metric_alert" "aviatrix_controller_alert" {
       name     = "FrontendPort"
       operator = "Include"
       values = [
-        "443",
-      ]
-    }
-  }
-
-}
-
-resource "azurerm_monitor_metric_alert" "aviatrix_copilot_alert" {
-  auto_mitigate       = true
-  enabled             = true
-  frequency           = "PT1M"
-  name                = "${var.copilot_name}-HealthCheck"
-  resource_group_name = module.aviatrix_controller_build.aviatrix_controller_rg.name
-  scopes = [
-    module.aviatrix_controller_build.aviatrix_loadbalancer_id,
-  ]
-  severity             = 0
-  tags                 = {}
-  target_resource_type = "Microsoft.Network/loadBalancers"
-  window_size          = "PT1M"
-
-  action {
-    action_group_id = azurerm_monitor_action_group.aviatrix_copilot_action.id
-  }
-
-  criteria {
-    aggregation            = "Maximum"
-    metric_name            = "DipAvailability"
-    metric_namespace       = "Microsoft.Network/loadBalancers"
-    operator               = "LessThanOrEqual"
-    skip_metric_validation = false
-    threshold              = 0
-
-    dimension {
-      name     = "FrontendPort"
-      operator = "Include"
-      values = [
-        "8443",
+        "443"
       ]
     }
   }
 }
 
-resource "azurerm_key_vault" "aviatrix_key_vault" {
-  name                        = "${var.controller_name}-${random_id.aviatrix.hex}"
-  resource_group_name         = module.aviatrix_controller_build.aviatrix_controller_rg.name
-  location                    = var.location
-  enabled_for_disk_encryption = true
-  tenant_id                   = module.aviatrix_controller_arm.directory_id
-  soft_delete_retention_days  = 7
-  purge_protection_enabled    = false
-  sku_name                    = "standard"
-  enable_rbac_authorization   = true
-}
-
-resource "azurerm_role_assignment" "key_vault_pipeline_service_principal" {
-  scope                = azurerm_key_vault.aviatrix_key_vault.id
-  role_definition_name = "Key Vault Secrets Officer"
-  principal_id         = data.azurerm_client_config.current.object_id
-}
-
-resource "azurerm_key_vault_secret" "aviatrix_arm_secret" {
-  name         = "aviatrix-arm-key"
-  value        = module.aviatrix_controller_arm.application_key
-  key_vault_id = azurerm_key_vault.aviatrix_key_vault.id
-  depends_on   = [azurerm_role_assignment.key_vault_pipeline_service_principal]
-}
-
-resource "azurerm_key_vault_secret" "controller_key_secret" {
-  count        = var.avx_controller_admin_password != "" ? 0 : 1
-  name         = "aviatrix-controller-key"
-  value        = random_password.generate_controller_secret.result
-  key_vault_id = azurerm_key_vault.aviatrix_key_vault.id
-  depends_on   = [azurerm_role_assignment.key_vault_pipeline_service_principal]
-}
-
-resource "null_resource" "run_controller_function" {
-  provisioner "local-exec" {
-    command = "cd azure-controller && func azure functionapp publish ${var.controller_name}-app-${random_id.aviatrix.hex}"
-  }
-  depends_on = [time_sleep.controller_function_provision]
-}
-
-resource "null_resource" "run_copilot_function" {
-  provisioner "local-exec" {
-    command = "cd azure-copilot && func azure functionapp publish ${var.copilot_name}-app-${random_id.aviatrix.hex}"
-  }
-  depends_on = [time_sleep.copilot_function_provision]
-}
-
+# 11.6 Wait 1 Minute Before Starting the Function App Code
 resource "time_sleep" "controller_function_provision" {
-  create_duration = "30s"
+  create_duration = "1m"
 
   triggers = {
     function_id = azurerm_function_app.controller_app.name
   }
 }
 
-resource "time_sleep" "copilot_function_provision" {
-  create_duration = "30s"
-
-  triggers = {
-    function_id = azurerm_function_app.copilot_app.name
+# 11.7 Deploy Controller Function App Code
+resource "null_resource" "run_controller_function" {
+  depends_on = [
+    time_sleep.controller_function_provision
+  ]
+  provisioner "local-exec" {
+    command = "cd azure-controller && func azure functionapp publish ${azurerm_function_app.controller_app.name}"
   }
 }

@@ -23,9 +23,11 @@ WAIT_DELAY = 30
 INITIAL_SETUP_DELAY = 10
 MAXIMUM_BACKUP_AGE = 24 * 3600 * 3  # 3 days
 
+
 class AviatrixException(Exception):
     def __init__(self, message="Aviatrix Error Message: ..."):
         super(AviatrixException, self).__init__(message)
+
 
 def function_handler(event):
     aviatrix_api_version = event["aviatrix_api_version"]
@@ -41,25 +43,27 @@ def function_handler(event):
     rg = event["rg"]
     wait_time = default_wait_time_for_apache_wakeup
 
-    credentials = DefaultAzureCredential(managed_identity_client_id = func_client_id)
+    credentials = DefaultAzureCredential(
+        managed_identity_client_id=func_client_id)
     subscription_client = SubscriptionClient(credentials)
     subscription = next(subscription_client.subscriptions.list())
     subscription_id = subscription.subscription_id
     resource_client = ResourceManagementClient(credentials, subscription_id)
     network_client = NetworkManagementClient(credentials, subscription_id)
     compute_client = ComputeManagementClient(credentials, subscription_id)
-    blob_service_client = BlobServiceClient("https://" + storage_name + ".blob.core.windows.net",credentials)
+    blob_service_client = BlobServiceClient(
+        f"https://{storage_name}.blob.core.windows.net", credentials)
     container_client = blob_service_client.get_container_client(container_name)
     secret_client = SecretClient(vault_url=vault_uri, credential=credentials)
     retrieved_secret = secret_client.get_secret(vault_secret)
-    
+
     cred = {
         'subscription_id': subscription_id,
         'tenant_id': tenant_id,
         'client_id': client_id,
         'client_secret': retrieved_secret.value
     }
-    
+
     vm_scaleset_client = compute_client.virtual_machine_scale_sets
     vm_res_client = compute_client.virtual_machines
     lb_res_client = network_client.load_balancers
@@ -70,24 +74,25 @@ def function_handler(event):
     # Get Scaleset attributes
     vm_scale_set = VmScaleSet(vm_scaleset_client, rg, vmScaleSetName)
 
-    # Get VM info in a Scaleset 
-    inst_name, private_nic_name = vm_scale_set_vm_info(vm_res_client, rg, vmScaleSetName)
+    # Get VM info in a Scaleset
+    inst_name, private_nic_name = vm_scale_set_vm_info(
+        vm_res_client, rg, vmScaleSetName)
     logging.info(f'inst_name:{inst_name}')
     logging.info(f'private_nic_name:{private_nic_name}')
-    avx_int_conf = VmNetInt(rg,network_client,private_nic_name)
+    avx_int_conf = VmNetInt(rg, network_client, private_nic_name)
     logging.info(f'avx_int_conf:{avx_int_conf}')
     old_pub_intf_id = avx_int_conf.AvxPubIntID
     logging.info(f'old_pub_intf_id:{old_pub_intf_id}')
     logging.info(avx_int_conf.AvxPubIntID)
 
     # Check if blob backup file is recent and able to access blob storage
-    blob_file = "CloudN_" + avx_int_conf.AvxPrivIntIP + "_save_cloudx_config.enc"
+    blob_file = f"CloudN_{avx_int_conf.AvxPrivIntIP}_save_cloudx_config.enc"
 
-    if not is_backup_file_is_recent(blob_file,container_client):
-        raise AviatrixException(f"  HA event failed. Backup file does not exist or is older"
-                    f" than {MAXIMUM_BACKUP_AGE}")
+    if not is_backup_file_is_recent(blob_file, container_client):
+        raise AviatrixException(f"HA event failed. Backup file does not exist or is older"
+                                f" than {MAXIMUM_BACKUP_AGE}")
 
-    version_file = "CloudN_" + avx_int_conf.AvxPrivIntIP + "_save_cloudx_version.txt"
+    version_file = f"CloudN_{avx_int_conf.AvxPrivIntIP}_save_cloudx_version.txt"
     logging.info(f"Controller version file name is {version_file}")
     ctrl_version = retrieve_controller_version(version_file, container_client)
 
@@ -111,17 +116,18 @@ def function_handler(event):
     logging.info("Increasing sku capacity -> 1")
     vm_scale_set.updateSku()
 
-    #### needs to be more dynamic.. wait time for scaleset to spin up one more instance
-    time.sleep(WAIT_DELAY) 
+    # needs to be more dynamic.. wait time for scaleset to spin up one more instance
+    time.sleep(WAIT_DELAY)
 
-    # Get new VM info in a Scaleset 
-    N_inst_name, N_private_nic_name = vm_scale_set_vm_info(vm_res_client, rg,vmScaleSetName)
-    N_avx_int_conf = VmNetInt(rg,network_client,N_private_nic_name)
+    # Get new VM info in a Scaleset
+    N_inst_name, N_private_nic_name = vm_scale_set_vm_info(
+        vm_res_client, rg, vmScaleSetName)
+    N_avx_int_conf = VmNetInt(rg, network_client, N_private_nic_name)
     N_pub_intf_conf = N_avx_int_conf.Pub_intf_conf
     int_sg_name = N_avx_int_conf.sg_name
 
     temp_access = False
-    # Check if https access for functions exist 
+    # Check if https access for functions exist
     sg_access = check_security_group_access(network_client, rg, int_sg_name)
     if not sg_access:
         create_security_rule(network_client, rg, int_sg_name)
@@ -142,7 +148,7 @@ def function_handler(event):
     )
 
     api_endpoint_url = (
-        "https://" + hostname + "/" + aviatrix_api_version + "/" + aviatrix_api_route
+        f"https://{hostname}/{aviatrix_api_version}/{aviatrix_api_route}"
     )
 
     wait_until_controller_api_server_is_ready(
@@ -152,10 +158,12 @@ def function_handler(event):
         total_wait_time=wait_time,
         interval_wait_time=10,
     )
-    logging.info("ENDED: Wait until API server of controller is up and running")
+    logging.info(
+        "ENDED: Wait until API server of controller is up and running")
 
     # Login Aviatrix Controller with username: Admin and password: private ip address and verify login
-    logging.info("START: Login Aviatrix Controller as admin using private ip address")
+    logging.info(
+        "START: Login Aviatrix Controller as admin using private ip address")
     response = login(
         api_endpoint_url=api_endpoint_url,
         username="admin",
@@ -165,10 +173,12 @@ def function_handler(event):
 
     verify_aviatrix_api_response_login(response=response)
     CID = response.json()["CID"]
-    logging.info("END: Login Aviatrix Controller as admin using private ip address")
+    logging.info(
+        "END: Login Aviatrix Controller as admin using private ip address")
 
     # Check if the controller has been initialized or not
-    logging.info("START: Check if Aviatrix Controller has already been initialized")
+    logging.info(
+        "START: Check if Aviatrix Controller has already been initialized")
     is_controller_initialized = has_controller_initialized(
         api_endpoint_url=api_endpoint_url,
         CID=CID,
@@ -179,7 +189,8 @@ def function_handler(event):
         logging.error(err_msg)
         raise AviatrixException(message=err_msg)
 
-    logging.info("END: Check if Aviatrix Controller has already been initialized")
+    logging.info(
+        "END: Check if Aviatrix Controller has already been initialized")
 
     # Initial Setup for Aviatrix Controller by Invoking Aviatrix API
     logging.info("Start: Aviatrix Controller initial setup")
@@ -219,7 +230,8 @@ def function_handler(event):
 
     # Restore backup
     logging.info("START: Restore-Backup")
-    restore_ctrl_backup(cred, hostname, CID, storage_name, container_name, blob_file)
+    restore_ctrl_backup(cred, hostname, CID, storage_name,
+                        container_name, blob_file)
     logging.info("END: Restore-Backup")
 
     if temp_access:
@@ -261,7 +273,8 @@ def wait_until_controller_api_server_is_ready(
             is_api_service_ready = False
 
             # invoke a dummy REST API to Aviatrix controller
-            response = requests.post(url=api_endpoint_url, data=payload, verify=False)
+            response = requests.post(
+                url=api_endpoint_url, data=payload, verify=False)
 
             # check response
             # if the server is ready, the response code should be 200.
@@ -272,7 +285,8 @@ def wait_until_controller_api_server_is_ready(
             #           which means the server is ready
             if response is not None:
                 response_status_code = response.status_code
-                logging.info("Server status code is: %s", str(response_status_code))
+                logging.info("Server status code is: %s",
+                             str(response_status_code))
                 py_dict = response.json()
                 if response.status_code == 200:
                     is_apache_returned_200 = True
@@ -368,7 +382,8 @@ def verify_aviatrix_api_response_login(response=None):
 
     api_return_boolean = py_dict["return"]
     if api_return_boolean is not True:
-        err_msg = "Fail to Login Aviatrix Controller. The Response is" + str(py_dict)
+        err_msg = "Fail to Login Aviatrix Controller. The Response is" + \
+            str(py_dict)
         raise AviatrixException(
             message=err_msg,
         )
@@ -376,7 +391,8 @@ def verify_aviatrix_api_response_login(response=None):
     api_return_msg = py_dict["results"]
     expected_string = "authorized successfully"
     if (expected_string in api_return_msg) is not True:
-        err_msg = "Fail to Login Aviatrix Controller. The Response is" + str(py_dict)
+        err_msg = "Fail to Login Aviatrix Controller. The Response is" + \
+            str(py_dict)
         raise AviatrixException(
             message=err_msg,
         )
@@ -404,7 +420,8 @@ def login(
             str(json.dumps(obj=payload_with_hidden_password, indent=4)),
         )
     else:
-        logging.info("Request payload: %s", str(json.dumps(obj=data, indent=4)))
+        logging.info("Request payload: %s", str(
+            json.dumps(obj=data, indent=4)))
 
     # send post request to the api endpoint
     response = send_aviatrix_api(
@@ -470,7 +487,8 @@ def send_aviatrix_api(
                 logging.info("START: retry")
                 logging.info("i == %d", i)
                 wait_time_before_retry = pow(2, i)
-                logging.info("Wait for: %ds for the next retry", wait_time_before_retry)
+                logging.info("Wait for: %ds for the next retry",
+                             wait_time_before_retry)
                 time.sleep(wait_time_before_retry)
                 logging.info("ENDED: Wait until retry")
                 # continue next iteration
@@ -526,7 +544,8 @@ def has_controller_initialized(
     payload_with_hidden_password["CID"] = "************"
     logging.info("API endpoint url: %s", str(api_endpoint_url))
     logging.info("Request method is: %s", str(request_method))
-    logging.info("Request payload is : %s", str(json.dumps(obj=payload_with_hidden_password, indent=4)))
+    logging.info("Request payload is : %s", str(
+        json.dumps(obj=payload_with_hidden_password, indent=4)))
 
     response = send_aviatrix_api(
         api_endpoint_url=api_endpoint_url,
@@ -560,17 +579,19 @@ class VmScaleSet():
     def updateSku(self):
         try:
             self.vmScaleSet.sku.capacity = 1
-            response = self.vm_ss_client.begin_create_or_update(self.resource_group,self.scaleSetName,self.vmScaleSet)
+            response = self.vm_ss_client.begin_create_or_update(
+                self.resource_group, self.scaleSetName, self.vmScaleSet)
             response.wait()
-            if response.status() == 'Succeeded': 
-                logging.info("Updated sku capacity: %s\n" % str(self.vmScaleSet.sku.capacity))
+            if response.status() == 'Succeeded':
+                logging.info("Updated sku capacity: %s\n" %
+                             str(self.vmScaleSet.sku.capacity))
                 # returns {'additional_properties': {}, 'name': 'Standard_A4_v2', 'tier': 'Standard', 'capacity': 1}
                 return self.sku
         except Exception as err:
             logging.warning(str(err))
 
 
-#### As a prevalidation :
+# As a prevalidation :
 # 1. Make sure eip is asscosiated with controller
 # 2. Make sure instance exists if N?A start from updating capacity -- Need to think of getting public ip info
 # 3. Make sure of using this class only if unhealthy instance exists
@@ -579,39 +600,47 @@ class VmNetInt():
         self.resource_group = resource_group
         self.network_client = network_client
         self.vm_intf_name = vm_intf_name
-        self.Pri_intf_conf = self.network_client.network_interfaces.get(resource_group,vm_intf_name)
-        self.sg_name = self.Pri_intf_conf.network_security_group.id.split('/')[-1]
+        self.Pri_intf_conf = self.network_client.network_interfaces.get(
+            resource_group, vm_intf_name)
+        self.sg_name = self.Pri_intf_conf.network_security_group.id.split(
+            '/')[-1]
         self.ipConfName = self.Pri_intf_conf.name
         self.subnetID = self.Pri_intf_conf.ip_configurations[0].subnet.id
         self.location = self.Pri_intf_conf.location
         self.AvxPrivIntIP = self.Pri_intf_conf.ip_configurations[0].private_ip_address
         self.AvxPrivIntID = self.Pri_intf_conf.id
         self.AvxPubIntID = self.Pri_intf_conf.ip_configurations[0].public_ip_address.id
-        self.AvxPubIntName = self.Pri_intf_conf.ip_configurations[0].public_ip_address.id.split('/')[-1]
-        self.Pub_intf_conf = self.network_client.public_ip_addresses.get(self.resource_group,self.AvxPubIntName)
+        self.AvxPubIntName = self.Pri_intf_conf.ip_configurations[0].public_ip_address.id.split(
+            '/')[-1]
+        self.Pub_intf_conf = self.network_client.public_ip_addresses.get(
+            self.resource_group, self.AvxPubIntName)
         self.AvxPubIntIP = self.Pub_intf_conf.ip_address
-        
+
     def rmPubIntIPAssoc(self):
         """ Removes public IP association before vm termination """
         inf_conf_model = self.Pri_intf_conf
         inf_conf_model.ip_configurations[0].public_ip_address = None
         try:
-            logging.info("START: Dissociating %s : %s from %s" % (self.AvxPubIntName,self.AvxPubIntIP, self.AvxPrivIntIP))
-            response = self.network_client.network_interfaces.begin_create_or_update( self.resource_group, self.vm_intf_name, inf_conf_model)
+            logging.info("START: Dissociating %s : %s from %s" % (
+                self.AvxPubIntName, self.AvxPubIntIP, self.AvxPrivIntIP))
+            response = self.network_client.network_interfaces.begin_create_or_update(
+                self.resource_group, self.vm_intf_name, inf_conf_model)
             response.wait()
-            if response.status() == 'Succeeded':        
+            if response.status() == 'Succeeded':
                 logging.info("End: Dissociating completed successfully\n")
         except Exception as err:
             logging.warning(str(err))
 
-    def addPubIntIPAssoc(self,old_public_ip_name):
+    def addPubIntIPAssoc(self, old_public_ip_name):
         """ Associates old public IP to the new vm """
-        params = {'id' : old_public_ip_name}
+        params = {'id': old_public_ip_name}
         inf_conf_model = self.Pri_intf_conf
         inf_conf_model.ip_configurations[0].public_ip_address = params
         try:
-            logging.info("START: Associating %s with %s" % (old_public_ip_name.split('/')[-1], self.AvxPrivIntIP))
-            response = self.network_client.network_interfaces.begin_create_or_update( self.resource_group, self.vm_intf_name, inf_conf_model)
+            logging.info("START: Associating %s with %s" %
+                         (old_public_ip_name.split('/')[-1], self.AvxPrivIntIP))
+            response = self.network_client.network_interfaces.begin_create_or_update(
+                self.resource_group, self.vm_intf_name, inf_conf_model)
             response.wait()
             if response.status() == 'Succeeded':
                 logging.info("End: Associating completed successfully\n")
@@ -621,36 +650,43 @@ class VmNetInt():
     def deletePubIntIP(self):
         """ Deletes the public IP """
         try:
-            logging.info("START: Deleting newly created %s : %s from %s" % (self.AvxPubIntName,self.AvxPubIntIP,self.resource_group))
-            response = self.network_client.public_ip_addresses.begin_delete( self.resource_group, self.AvxPubIntName)
+            logging.info("START: Deleting newly created %s : %s from %s" % (
+                self.AvxPubIntName, self.AvxPubIntIP, self.resource_group))
+            response = self.network_client.public_ip_addresses.begin_delete(
+                self.resource_group, self.AvxPubIntName)
             response.wait()
-            if response.status() == 'Succeeded':   
+            if response.status() == 'Succeeded':
                 logging.info("End: Deleting public ip successfully\n")
         except Exception as err:
             logging.warning(str(err))
+
 
 class LbConf():
     def __init__(self, lb_client, resource_group, network_client, lb_name):
         self.resource_group = resource_group
         self.lb_name = lb_name
         self.network_client = network_client
-        self.lb_client_get = lb_client.get(self.resource_group,self.lb_name)
+        self.lb_client_get = lb_client.get(self.resource_group, self.lb_name)
         self.location = self.lb_client_get.location
         self.lb_fe_name = self.lb_client_get.frontend_ip_configurations[0].name
         self.lb_be_name = self.lb_client_get.backend_address_pools[0].name
         self.lb_be_id = self.lb_client_get.backend_address_pools[0].id
         self.lb_be_rules = self.lb_client_get.backend_address_pools[0].load_balancing_rules
         self.lb_be_type = self.lb_client_get.backend_address_pools[0].type
-        self.lb_public_ip_name = self.lb_client_get.frontend_ip_configurations[0].public_ip_address.id.split('/')[-1]
-        self.lb_public_ip = self.network_client.public_ip_addresses.get(self.resource_group,self.lb_public_ip_name)
+        self.lb_public_ip_name = self.lb_client_get.frontend_ip_configurations[0].public_ip_address.id.split(
+            '/')[-1]
+        self.lb_public_ip = self.network_client.public_ip_addresses.get(
+            self.resource_group, self.lb_public_ip_name)
         self.lb_public_ip_prefix = self.lb_public_ip.ip_address
-        self.lb_be_conf = self.network_client.load_balancer_backend_address_pools.get(self.resource_group, self.lb_name, self.lb_be_name)
+        self.lb_be_conf = self.network_client.load_balancer_backend_address_pools.get(
+            self.resource_group, self.lb_name, self.lb_be_name)
 
 
 def terminate_vm(vm_client, resource_group, vm_name):
     """ Terminates a vm in the specified resource group """
     try:
-        logging.info("START: Terminating instance %s from resource group %s" % (vm_name,resource_group))
+        logging.info("START: Terminating instance %s from resource group %s" % (
+            vm_name, resource_group))
         response = vm_client.begin_delete(resource_group, vm_name)
         response.wait()
         if response.status() == 'Succeeded':
@@ -658,19 +694,23 @@ def terminate_vm(vm_client, resource_group, vm_name):
     except Exception as err:
         logging.warning(str(err))
 
-def vm_scale_set_vm_info(vm_client,resource_group, scaleSetName):
+
+def vm_scale_set_vm_info(vm_client, resource_group, scaleSetName):
     vm_name = ''
     vm_nic_name = ''
     vmScaleSetVmsLst = vm_client.list(resource_group)
     for vmScaleSetVms in vmScaleSetVmsLst:
-        #### Searching the VM name by appending scaleset name + _
+        # Searching the VM name by appending scaleset name + _
         if scaleSetName + '_' in vmScaleSetVms.name:
             vm_name = vmScaleSetVms.name
-            vm_nic_name = vmScaleSetVms.network_profile.network_interfaces[0].id.split('/')[-1]
-    return vm_name,vm_nic_name
+            vm_nic_name = vmScaleSetVms.network_profile.network_interfaces[0].id.split(
+                '/')[-1]
+    return vm_name, vm_nic_name
+
 
 def check_security_group_access(network_client, resource_group, sg_name):
-    vmSgLst = network_client.network_security_groups.get(resource_group,sg_name)
+    vmSgLst = network_client.network_security_groups.get(
+        resource_group, sg_name)
     for rules in vmSgLst.security_rules:
         if rules.protocol == 'TCP' and rules.source_address_prefix == '*' and rules.direction == 'Inbound' and rules.destination_port_range == "443":
             logging.info("Access for Function inbound exists")
@@ -679,34 +719,39 @@ def check_security_group_access(network_client, resource_group, sg_name):
             logging.info("Access for Function inbound does not exist")
             return False
 
+
 def delete_security_rule(network_client, resource_group, sg_name):
     try:
-        sgRuleDelete = network_client.security_rules.begin_delete(resource_group,sg_name,'AllowFunctionInBound-Temp')
+        sgRuleDelete = network_client.security_rules.begin_delete(
+            resource_group, sg_name, 'AllowFunctionInBound-Temp')
         sgRuleDelete.wait()
         if sgRuleDelete.status() == 'Succeeded':
             logging.info("End: Temp NSG rule")
     except Exception as err:
-        logging.warning(str(err)) 
-        
+        logging.warning(str(err))
+
 
 def create_security_rule(network_client, resource_group, sg_name):
     rule_num = 100
     for i in range(30):
         rule_num = rule_num + i
-        vmSgLst = network_client.network_security_groups.get(resource_group,sg_name)
-        security_rule = SecurityRule( protocol='TCP', source_address_prefix='*', 
-                                  source_port_range="*", destination_port_range="443", priority=rule_num,
-                                  destination_address_prefix='*', access='Allow', direction='Inbound', name = 'AllowFunctionInBound-Temp')
+        vmSgLst = network_client.network_security_groups.get(
+            resource_group, sg_name)
+        security_rule = SecurityRule(protocol='TCP', source_address_prefix='*',
+                                     source_port_range="*", destination_port_range="443", priority=rule_num,
+                                     destination_address_prefix='*', access='Allow', direction='Inbound', name='AllowFunctionInBound-Temp')
         vmSgLst.security_rules.append(security_rule)
         try:
-            sgRuleCreate = network_client.network_security_groups.begin_create_or_update(resource_group, sg_name, parameters=vmSgLst)
+            sgRuleCreate = network_client.network_security_groups.begin_create_or_update(
+                resource_group, sg_name, parameters=vmSgLst)
             sgRuleCreate.wait()
             if sgRuleCreate.status() == 'Succeeded':
                 logging.info("START: Temp NSG rule")
                 break
         except Exception as err:
             i = i + 1
-            logging.warning(str(err)) 
+            logging.warning(str(err))
+
 
 def run_initial_setup(
     api_endpoint_url="123.123.123.123/v1/api",
@@ -728,7 +773,8 @@ def run_initial_setup(
     py_dict = response.json()
     # The initial setup has been done
     if py_dict["return"] is True:
-        logging.info("Initial setup for Aviatrix Controller has been already done")
+        logging.info(
+            "Initial setup for Aviatrix Controller has been already done")
         return response
 
     # The initial setup has not been done yet
@@ -742,7 +788,8 @@ def run_initial_setup(
     payload_with_hidden_password["CID"] = "********"
     logging.info("API endpoint url: %s", str(api_endpoint_url))
     logging.info("Request method is: %s", str(request_method))
-    logging.info("Request payload is : %s", str(json.dumps(obj=payload_with_hidden_password, indent=4)))
+    logging.info("Request payload is : %s", str(
+        json.dumps(obj=payload_with_hidden_password, indent=4)))
     try:
         response = send_aviatrix_api(
             api_endpoint_url=api_endpoint_url,
@@ -762,14 +809,14 @@ def run_initial_setup(
 
 # End def run_initial_setup()
 
-def retrieve_controller_version(version_file,container_client):
+def retrieve_controller_version(version_file, container_client):
     """ Get the controller version from backup file"""
     logging.info("Retrieving version from file " + str(version_file))
     s3c = container_client.get_blob_client(version_file)
     try:
         with open('/tmp/version_ctrlha.txt', 'wb') as data:
             s3c.download_blob().readinto(data)
-                        
+
     except Exception as err:
         logging.warning(str(err))
         logging.info("The object does not exist.")
@@ -795,7 +842,8 @@ def retrieve_controller_version(version_file,container_client):
         logging.warning("")
         return ctrl_version
 
-def is_backup_file_is_recent(backup_file,container_client):
+
+def is_backup_file_is_recent(backup_file, container_client):
     """ Check if backup file is not older than MAXIMUM_BACKUP_AGE """
     try:
         s3c = container_client.get_blob_client(backup_file)
@@ -809,11 +857,13 @@ def is_backup_file_is_recent(backup_file,container_client):
         if age < MAXIMUM_BACKUP_AGE:
             logging.info("Succesfully validated Backup file age\n")
             return True
-        logging.warning(f"  File age {age} is older than the maximum allowed value of {MAXIMUM_BACKUP_AGE}")
+        logging.warning(
+            f"  File age {age} is older than the maximum allowed value of {MAXIMUM_BACKUP_AGE}")
         return False
     except Exception as err:
         logging.warning(f"  Checking backup file age failed due to {str(err)}")
         return False
+
 
 def restore_ctrl_backup(creds, controller_ip, cid, storage, container, blob):
     base_url = "https://%s/v1/api" % controller_ip
@@ -827,20 +877,21 @@ def restore_ctrl_backup(creds, controller_ip, cid, storage, container, blob):
                  "arm_subscription_id": creds['subscription_id'],
                  "arm_application_endpoint": creds['tenant_id'],
                  "arm_application_client_id": creds['client_id']
-                }
+                 }
     payload_with_hidden_password = dict(post_data)
     payload_with_hidden_password["CID"] = "********"
-    payload_with_hidden_password["arm_application_client_secret"] = "********"    
+    payload_with_hidden_password["arm_application_client_secret"] = "********"
     logging.info("Trying to restore backup account with data %s \n" %
-        str(json.dumps(obj=payload_with_hidden_password, indent=4)))
+                 str(json.dumps(obj=payload_with_hidden_password, indent=4)))
 
     try:
         response = requests.post(base_url, data=post_data, verify=False)
     except requests.exceptions.ConnectionError as err:
         if "Remote end closed connection without response" in str(err):
             logging.info("Server closed the connection while executing create account API."
-                  " Ignoring response")
-            output = {"return": True, 'reason': 'Warning!! Server closed the connection'}
+                         " Ignoring response")
+            output = {"return": True,
+                      'reason': 'Warning!! Server closed the connection'}
             time.sleep(INITIAL_SETUP_DELAY)
         else:
             output = {"return": False, "reason": str(err)}
@@ -850,31 +901,33 @@ def restore_ctrl_backup(creds, controller_ip, cid, storage, container, blob):
 
     return output
 
+
 def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
     logging.basicConfig(
         format="%(asctime)s aviatrix-azure-function--- %(message)s", level=logging.INFO
     )
     logging.info(f"invocation_id : {context.invocation_id}")
     req_body = req.get_json()
-    headers = {"invocation_id": context.invocation_id, "alert_status": req_body['data']['status']}
+    headers = {"invocation_id": context.invocation_id,
+               "alert_status": req_body['data']['status']}
     if not req_body['data']['status'] == 'Activated':
         logging.warning(f"Alert status type: {req_body['data']['status']}")
         return func.HttpResponse(
-                "HA failover event is not triggered",
-                headers=headers, status_code=501)
+            "HA failover event is not triggered",
+            headers=headers, status_code=501)
 
     event = {
         "aviatrix_api_version": "v1",
         "aviatrix_api_route": "api",
-        "tenant_id" : os.environ["avx_tenant_id"],
-        "client_id" : os.environ["avx_client_id"],
-        "vault_uri" : os.environ["keyvault_uri"],
-        "vault_secret" : os.environ["keyvault_secret"],
-        "func_client_id" : os.environ["func_client_id"],
-        "storage_name" : os.environ["storage_name"],
-        "container_name" : os.environ["container_name"],
-        "lb_name" : req_body['data']['context']['resourceName'],
-        "rg" : req_body['data']['context']['resourceGroupName']
+        "tenant_id": os.environ["avx_tenant_id"],
+        "client_id": os.environ["avx_client_id"],
+        "vault_uri": os.environ["keyvault_uri"],
+        "vault_secret": os.environ["keyvault_secret"],
+        "func_client_id": os.environ["func_client_id"],
+        "storage_name": os.environ["storage_name"],
+        "container_name": os.environ["container_name"],
+        "lb_name": req_body['data']['context']['resourceName'],
+        "rg": req_body['data']['context']['resourceGroupName']
     }
 
     try:
@@ -885,5 +938,5 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
         logging.info("Aviatrix Controller has been initialized successfully")
         logging.info("Loading function completed !!")
         return func.HttpResponse(
-                "Failover event completed successfully",
-                headers=headers, status_code=200)
+            "Failover event completed successfully",
+            headers=headers, status_code=200)
