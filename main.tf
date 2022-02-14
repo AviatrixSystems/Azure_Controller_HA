@@ -49,12 +49,6 @@ module "aviatrix_controller_build" {
   controller_virtual_machine_admin_password = var.controller_virtual_machine_admin_password == "" ? random_password.generate_controller_secret.result : var.controller_virtual_machine_admin_password
   controller_virtual_machine_size           = var.controller_virtual_machine_size
   incoming_ssl_cidr                         = var.incoming_ssl_cidr
-  copilot_name                              = var.copilot_name
-  copilot_virtual_machine_admin_username    = var.copilot_virtual_machine_admin_username
-  copilot_virtual_machine_admin_password    = var.copilot_virtual_machine_admin_password == "" ? random_password.generate_controller_secret.result : var.copilot_virtual_machine_admin_password
-  copilot_virtual_machine_size              = var.copilot_virtual_machine_size
-  copilot_additional_disks                  = var.copilot_additional_disks
-  copilot_allowed_cidrs                     = var.copilot_allowed_cidrs
   depends_on = [
     module.aviatrix_controller_arm
   ]
@@ -123,13 +117,6 @@ data "azurerm_function_app_host_keys" "func_keys" {
   depends_on = [azurerm_function_app.controller_app]
 }
 
-data "azurerm_function_app_host_keys" "copilot_func_keys" {
-  name                = azurerm_function_app.copilot_app.name
-  resource_group_name = module.aviatrix_controller_build.aviatrix_controller_rg.name
-
-  depends_on = [azurerm_function_app.copilot_app]
-}
-
 resource "azurerm_function_app" "controller_app" {
   name                       = "${var.controller_name}-app-${random_id.aviatrix.hex}"
   location                   = var.location
@@ -154,42 +141,6 @@ resource "azurerm_function_app" "controller_app" {
     "storage_name"                    = azurerm_storage_account.aviatrix-controller-storage.name,
     "container_name"                  = azurerm_storage_container.aviatrix-backup-container.name,
     "scaleset_name"                   = var.controller_name,
-    "SCM_DO_BUILD_DURING_DEPLOYMENT"  = "true",
-    "PYTHON_ENABLE_WORKER_EXTENSIONS" = "1"
-    "ENABLE_ORYX_BUILD"               = "true",
-    "FUNCTIONS_WORKER_RUNTIME"        = "python",
-  }
-
-  site_config {
-    linux_fx_version = "Python|3.9"
-    ftps_state       = "Disabled"
-  }
-  depends_on = [
-    module.aviatrix_controller_initialize,
-    azurerm_key_vault_secret.aviatrix_arm_secret
-  ]
-}
-
-resource "azurerm_function_app" "copilot_app" {
-  name                       = "${var.copilot_name}-app-${random_id.aviatrix.hex}"
-  location                   = var.location
-  resource_group_name        = module.aviatrix_controller_build.aviatrix_controller_rg.name
-  app_service_plan_id        = azurerm_app_service_plan.controller_app_service_plan.id
-  storage_account_name       = azurerm_storage_account.aviatrix-controller-storage.name
-  storage_account_access_key = azurerm_storage_account.aviatrix-controller-storage.primary_access_key
-  identity {
-    type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.aviatrix_identity.id]
-  }
-  os_type = "linux"
-  version = "~4"
-
-  app_settings = {
-    "APPINSIGHTS_INSTRUMENTATIONKEY"  = azurerm_application_insights.application_insights.instrumentation_key,
-    "func_client_id"                  = azurerm_user_assigned_identity.aviatrix_identity.client_id,
-    "avx_tenant_id"                   = module.aviatrix_controller_arm.directory_id,
-    "avx_client_id"                   = module.aviatrix_controller_arm.application_id,
-    "copilot_scaleset_name"           = var.copilot_name,
     "SCM_DO_BUILD_DURING_DEPLOYMENT"  = "true",
     "PYTHON_ENABLE_WORKER_EXTENSIONS" = "1"
     "ENABLE_ORYX_BUILD"               = "true",
@@ -290,28 +241,6 @@ resource "azurerm_monitor_action_group" "aviatrix_controller_action" {
 
 }
 
-resource "azurerm_monitor_action_group" "aviatrix_copilot_action" {
-  enabled             = true
-  name                = "${var.copilot_name}-action"
-  resource_group_name = module.aviatrix_controller_build.aviatrix_controller_rg.name
-  short_name          = "cplt-action"
-  tags                = {}
-
-  azure_function_receiver {
-    function_app_resource_id = azurerm_function_app.controller_app.id
-    function_name            = azurerm_function_app.copilot_app.name
-    http_trigger_url         = "https://${azurerm_function_app.copilot_app.default_hostname}/api/Azure-Copilot-HA?code=${data.azurerm_function_app_host_keys.copilot_func_keys.default_function_key}"
-    name                     = "copilot-func"
-    use_common_alert_schema  = false
-  }
-
-  email_receiver {
-    email_address           = var.account_email
-    name                    = "sendtoadmin"
-    use_common_alert_schema = false
-  }
-
-}
 resource "azurerm_monitor_metric_alert" "aviatrix_controller_alert" {
   auto_mitigate       = true
   enabled             = true
@@ -343,43 +272,6 @@ resource "azurerm_monitor_metric_alert" "aviatrix_controller_alert" {
       operator = "Include"
       values = [
         "443",
-      ]
-    }
-  }
-
-}
-
-resource "azurerm_monitor_metric_alert" "aviatrix_copilot_alert" {
-  auto_mitigate       = true
-  enabled             = true
-  frequency           = "PT1M"
-  name                = "${var.copilot_name}-HealthCheck"
-  resource_group_name = module.aviatrix_controller_build.aviatrix_controller_rg.name
-  scopes = [
-    module.aviatrix_controller_build.aviatrix_loadbalancer_id,
-  ]
-  severity             = 0
-  tags                 = {}
-  target_resource_type = "Microsoft.Network/loadBalancers"
-  window_size          = "PT1M"
-
-  action {
-    action_group_id = azurerm_monitor_action_group.aviatrix_copilot_action.id
-  }
-
-  criteria {
-    aggregation            = "Maximum"
-    metric_name            = "DipAvailability"
-    metric_namespace       = "Microsoft.Network/loadBalancers"
-    operator               = "LessThanOrEqual"
-    skip_metric_validation = false
-    threshold              = 0
-
-    dimension {
-      name     = "FrontendPort"
-      operator = "Include"
-      values = [
-        "8443",
       ]
     }
   }
@@ -425,25 +317,10 @@ resource "null_resource" "run_controller_function" {
   depends_on = [time_sleep.controller_function_provision]
 }
 
-resource "null_resource" "run_copilot_function" {
-  provisioner "local-exec" {
-    command = "cd azure-copilot && func azure functionapp publish ${var.copilot_name}-app-${random_id.aviatrix.hex}"
-  }
-  depends_on = [time_sleep.copilot_function_provision]
-}
-
 resource "time_sleep" "controller_function_provision" {
-  create_duration = "30s"
+  create_duration = "40s"
 
   triggers = {
     function_id = azurerm_function_app.controller_app.name
-  }
-}
-
-resource "time_sleep" "copilot_function_provision" {
-  create_duration = "30s"
-
-  triggers = {
-    function_id = azurerm_function_app.copilot_app.name
   }
 }
