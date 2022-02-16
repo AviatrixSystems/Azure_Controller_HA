@@ -19,8 +19,8 @@
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_aviatrix_controller_arm"></a> [aviatrix\_controller\_arm](#module\_aviatrix\_controller\_arm) | github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure | n/a |
-| <a name="module_aviatrix_controller_initialize"></a> [aviatrix\_controller\_initialize](#module\_aviatrix\_controller\_initialize) | github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize | n/a |
+| <a name="module_aviatrix_controller_arm"></a> [aviatrix\_controller\_arm](#module\_aviatrix\_controller\_arm) | github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure | master |
+| <a name="module_aviatrix_controller_initialize"></a> [aviatrix\_controller\_initialize](#module\_aviatrix\_controller\_initialize) | github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize | master |
 
 ## Resources
 
@@ -68,7 +68,6 @@
 | [azurerm_client_config.current](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/client_config) | data source |
 | [azurerm_function_app_host_keys.func_keys](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/function_app_host_keys) | data source |
 | [azurerm_resources.get_vmss_instance](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/resources) | data source |
-| [azurerm_subscription.main](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/subscription) | data source |
 | [azurerm_virtual_machine.vm_data](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/virtual_machine) | data source |
 
 ## Inputs
@@ -119,5 +118,5 @@
 
 | Name | Description |
 |------|-------------|
-| <a name="output_avx_controller_lb_public_ip"></a> [avx\_controller\_lb\_public\_ip](#output\_avx\_controller\_lb\_public\_ip) | n/a |
+| <a name="output_avx_controller_lb_public_ip"></a> [avx\_controller\_lb\_public\_ip](#output\_avx\_controller\_lb\_public\_ip) | The Public IP Address of the Load Balancer |
 <!-- END_TF_DOCS -->
