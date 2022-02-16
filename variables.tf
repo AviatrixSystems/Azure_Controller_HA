@@ -207,6 +207,12 @@ variable "function_action_group_name" {
   default     = "aviatrix-function-action-group"
 }
 
+variable "enable_function_app_alerts" {
+  type = bool
+  description = "This will create the following Azure Monitor Alerts for the Function App; function triggered, function success, function failure, function exception."
+  default = false
+}
+
 variable "notification_action_group_name" {
   type        = string
   description = "The name of the action group created for alerting notifications on the controller function app. (Email Only)"

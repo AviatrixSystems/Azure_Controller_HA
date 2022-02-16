@@ -35,7 +35,7 @@ data "azurerm_client_config" "current" {}
 
 # 1.0. Create Custom Service Principal for Aviatrix Controller
 module "aviatrix_controller_arm" {
-  #source = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure" #TODO: Change this to main repo when done testing.
+  # source = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure" #TODO: Change this to main repo when done testing.
   source = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure"
   app_name           = var.to_be_created_service_principal_name
   create_custom_role = var.create_custom_role
@@ -306,7 +306,7 @@ data "azurerm_virtual_machine" "vm_data" {
 # 9.0. Initial Controller Configurations (occurs only on first deployment)
 module "aviatrix_controller_initialize" {
   source = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize"
-  #source                        = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize" #TODO: Change this to main repo when done testing.
+  # source                        = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize" #TODO: Change this to main repo when done testing.
   avx_controller_public_ip      = azurerm_public_ip.aviatrix_lb_public_ip.ip_address
   avx_controller_private_ip     = data.azurerm_virtual_machine.vm_data.private_ip_address
   avx_controller_admin_email    = var.avx_controller_admin_email
@@ -567,6 +567,7 @@ resource "azurerm_monitor_metric_alert" "aviatrix_controller_alert" {
 
 # 12.3. Create Notification Alert for Function App being Triggered
 resource "azurerm_monitor_metric_alert" "function_app_triggered_alert" {
+  count               = var.enable_function_app_alerts ? 1 : 0
   name                = "Aviatrix Function App Failover Triggered"
   description         = "Sends Information Notification when Azure Aviatrix Controller HA is triggered."
   resource_group_name = azurerm_resource_group.aviatrix_rg.name
@@ -596,6 +597,7 @@ resource "azurerm_monitor_metric_alert" "function_app_triggered_alert" {
 
 # 12.4. Create Notification Alert for Function App Exception
 resource "azurerm_monitor_metric_alert" "function_app_exception_alert" {
+  count               = var.enable_function_app_alerts ? 1 : 0
   name                = "Aviatrix Function App Failover - Exception"
   description         = "Sends Error Notification when Azure Aviatrix Controller Function App Exception Occurs."
   resource_group_name = azurerm_resource_group.aviatrix_rg.name
@@ -625,6 +627,7 @@ resource "azurerm_monitor_metric_alert" "function_app_exception_alert" {
 
 # 12.5. Create Notification Alert for Function App Failure
 resource "azurerm_monitor_metric_alert" "function_app_failed_alert" {
+  count               = var.enable_function_app_alerts ? 1 : 0
   name                = "Aviatrix Function App Failover - Failed"
   description         = "Sends Error Notification when Azure Aviatrix Controller Function App Failover Request Fails."
   resource_group_name = azurerm_resource_group.aviatrix_rg.name
@@ -659,6 +662,7 @@ resource "azurerm_monitor_metric_alert" "function_app_failed_alert" {
 
 # 12.6. Create Notification Alert for Function App Success
 resource "azurerm_monitor_metric_alert" "function_app_success_alert" {
+  count               = var.enable_function_app_alerts ? 1 : 0
   name                = "Aviatrix Function App Failover - Suceeded"
   description         = "Sends Information Notification when Azure Aviatrix Controller Function App Failover Request Succeeds."
   resource_group_name = azurerm_resource_group.aviatrix_rg.name
