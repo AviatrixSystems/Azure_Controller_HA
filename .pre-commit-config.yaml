@@ -1,0 +1,55 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-vcs-permalinks
+      - id: forbid-new-submodules
+      - id: no-commit-to-branch
+
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: "v1.59.0"
+    hooks:
+      - id: terraform_fmt # Ensures terraform formatting is correct
+        always_run: true
+        args:
+          - --args=-no-color
+          - --args=-diff
+          - --args=-write=false
+          - --args=-check
+
+      - id: terraform_tflint # Ensures terraform syntax is correct
+        always_run: true
+        args:
+          - --args=--enable-rule=terraform_comment_syntax # Ensures comments are '#' instead of '//'
+          - --args=--enable-rule=terraform_typed_variables # Ensures 'type' is specified for variables
+          - --args=--enable-rule=terraform_documented_outputs # Ensures 'description' is applied for all outputs
+          - --args=--enable-rule=terraform_documented_variables # Ensures 'description' is applied for variables
+          - --args=--enable-rule=terraform_unused_declarations # Ensures unused variables are not applied
+
+      - id: checkov
+        always_run: true
+        args: [
+          "-d", ".",
+          "--skip-check", "CKV_AZURE_119", # skip network interfaces do not use public IPs
+          "--skip-check", "CKV2_AZURE_21", # skip storage blob logging
+          "--skip-check", "CKV2_AZURE_8", # skip "Ensure the storage container storing the activity logs is not publicly accessible"
+          "--skip-check", "CKV2_AZURE_1", # skip "Ensure storage for critical data are encrypted with Customer Managed Key"
+          "--skip-check", "CKV2_AZURE_18", # skip "Ensure that Storage Accounts use customer-managed key for encryption"
+          "--skip-check", "CKV_AZURE_1", # skip "Ensure Azure Instance does not use basic authentication(Use SSH Key Instead)"
+          "--skip-check", "CKV_AZURE_41", # skip "Ensure that the expiration date is set on all secrets"
+          "--skip-check", "CKV_AZURE_43", # skip "Ensure Storage Accounts adhere to the naming rules"
+          "--skip-check", "CKV_AZURE_33", # skip "Ensure Storage logging is enabled for Queue service for read, write and delete requests"
+          "--skip-check", "CKV_AZURE_110", # skip "Ensure that key vault enables purge protection"
+          "--skip-check", "CKV_AZURE_42", # skip "Ensure the key vault is recoverable"
+          "--skip-check", "CKV_AZURE_12", # skip "Ensure that Network Security Group Flow Log retention period is 'greater than 90 days'"
+          "--skip-check", "CKV_AZURE_35", # skip "Ensure default network access rule for Storage Accounts is set to deny"
+        ]
+
+      - id: terraform_tfsec
+        always_run: true
+        args:
+          - >
+            --args= -e azure-keyvault-ensure-secret-expiry,azure-network-retention-policy-set,azure-keyvault-no-purge,azure-compute-disable-password-authentication,azure-storage-default-action-deny
