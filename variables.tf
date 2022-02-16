@@ -106,7 +106,7 @@ variable "network_security_group_controller_name" {
 variable "aviatrix_controller_security_group_allowed_ips" {
   type        = list(string)
   description = "Incoming cidr for security group used by controller"
-  default = []
+  default     = []
 }
 
 variable "controller_virtual_machine_size" {
@@ -208,9 +208,9 @@ variable "function_action_group_name" {
 }
 
 variable "enable_function_app_alerts" {
-  type = bool
+  type        = bool
   description = "This will create the following Azure Monitor Alerts for the Function App; function triggered, function success, function failure, function exception."
-  default = false
+  default     = false
 }
 
 variable "notification_action_group_name" {

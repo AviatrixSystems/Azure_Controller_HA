@@ -36,7 +36,7 @@ data "azurerm_client_config" "current" {}
 # 1.0. Create Custom Service Principal for Aviatrix Controller
 module "aviatrix_controller_arm" {
   # source = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure" #TODO: Change this to main repo when done testing.
-  source = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure"
+  source             = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure"
   app_name           = var.to_be_created_service_principal_name
   create_custom_role = var.create_custom_role
 }
