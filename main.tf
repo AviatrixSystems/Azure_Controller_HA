@@ -705,9 +705,6 @@ resource "null_resource" "run_controller_function" {
   depends_on = [
     time_sleep.controller_function_provision
   ]
-  # triggers = {
-  #   timestamp = timestamp()
-  # }
   provisioner "local-exec" {
     command = "cd azure-controller && func azure functionapp publish ${azurerm_function_app.controller_app.name} --build remote"
   }

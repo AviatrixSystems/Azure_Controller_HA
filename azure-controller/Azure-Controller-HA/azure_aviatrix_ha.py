@@ -284,6 +284,8 @@ def wait_until_controller_api_server_is_ready(
                 logging.info(f"Server status code is: "
                              f"{str(response_status_code)}")
                 py_dict = response.json()
+                if 'CID' in py_dict:
+                    py_dict["CID"] = "*********"
                 if response.status_code == 200:
                     is_apache_returned_200 = True
 
@@ -552,7 +554,7 @@ def has_controller_initialized(
     )
 
     py_dict = response.json()
-    logging.info(f"Aviatrix API response is: {str(py_dict)}", )
+    logging.info(f"Aviatrix API response is: {str(py_dict)}")
 
     if py_dict["return"] is False and "not run" in py_dict["reason"]:
         return False
@@ -737,6 +739,8 @@ def run_initial_setup(api_endpoint_url="123.123.123.123/v1/api",
         payload=data,
     )
     py_dict = response.json()
+    if 'CID' in py_dict:
+        py_dict["CID"] = "*********"
     # The initial setup has been done
     if py_dict["return"] is True:
         logging.info(
