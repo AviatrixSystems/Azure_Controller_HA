@@ -122,22 +122,22 @@ controller_virtual_machine_admin_password = "<VM Password>"                     
 controller_public_ssh_key                 = "<SSH Public Key>"                         # Optional: The Public Key to be used for the Virtual Machine. Default = ""
 
 # Aviatrix Controller Configuration Variables
-avx_access_account_name       = "travis-testing-account"           # Required
-avx_account_email             = "tdever@aviatrix.com"              # Required
-avx_controller_admin_email    = "tdever@aviatrix.com"              # Required
-avx_aviatrix_customer_id      = "avx-dev-1613002716.89"            # Required
+avx_access_account_name       = # Required
+avx_account_email             = # Required
+avx_controller_admin_email    = # Required
+avx_aviatrix_customer_id      = # Required
 avx_controller_admin_password = ""
 avx_controller_version        = "6.5"
 
 # Function App Variables
-application_insights_name              = "travis-controller-ai"
-app_service_plan_name                  = "travis-controller-app-service"
-function_app_name                      = "travis-controller-function-app"
-user_assigned_identity_name            = "travis-controller-user-identity"
-aviatrix_function_app_custom_role_name = "travis-controller-custom-role"
-function_action_group_name             = "travis-function-ag"
-notification_action_group_name         = "travis-notify-ag"
-notification_action_group_id           = ""
+application_insights_name              = 
+app_service_plan_name                  = 
+function_app_name                      = 
+user_assigned_identity_name            = 
+aviatrix_function_app_custom_role_name = 
+function_action_group_name             = 
+notification_action_group_name         = 
+notification_action_group_id           = 
 ```
 
 ### Execute
