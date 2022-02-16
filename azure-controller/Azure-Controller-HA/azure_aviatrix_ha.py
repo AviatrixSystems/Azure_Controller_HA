@@ -364,6 +364,8 @@ def verify_aviatrix_api_response_login(response=None):
     # response_message = "authorized successfully"
 
     py_dict = response.json()
+    if 'CID' in py_dict:
+        py_dict["CID"] = "*********"
     logging.info(f"Aviatrix API response is {str(py_dict)}")
 
     response_code = response.status_code
@@ -510,6 +512,8 @@ def verify_aviatrix_api_run_initial_setup(response=None):
     if not response:
         return
     py_dict = response.json()
+    if 'CID' in py_dict:
+        py_dict["CID"] = "*********"
     logging.info(f"Aviatrix API response is: {str(py_dict)}")
 
     response_code = response.status_code
@@ -554,6 +558,8 @@ def has_controller_initialized(
     )
 
     py_dict = response.json()
+    if 'CID' in py_dict:
+        py_dict["CID"] = "*********"
     logging.info(f"Aviatrix API response is: {str(py_dict)}")
 
     if py_dict["return"] is False and "not run" in py_dict["reason"]:
