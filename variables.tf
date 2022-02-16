@@ -131,6 +131,7 @@ variable "controller_virtual_machine_admin_password" {
   type        = string
   description = "Admin Password for the controller virtual machine."
   default     = ""
+  sensitive   = true
 }
 
 variable "controller_public_ssh_key" {
@@ -163,6 +164,7 @@ variable "avx_controller_admin_password" {
   type        = string
   description = "aviatrix controller admin password"
   default     = ""
+  sensitive   = true
 }
 
 variable "avx_controller_version" {

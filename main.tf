@@ -29,14 +29,12 @@ resource "random_password" "generate_controller_secret" {
   override_special = "_%@"
 }
 
-data "azurerm_subscription" "main" {}
-
 data "azurerm_client_config" "current" {}
 
 # 1.0. Create Custom Service Principal for Aviatrix Controller
 module "aviatrix_controller_arm" {
-  # source = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure" #TODO: Change this to main repo when done testing.
-  source             = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure"
+  #source = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure" #TODO: Change this to main repo when done testing.
+  source             = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure?ref=master"
   app_name           = var.to_be_created_service_principal_name
   create_custom_role = var.create_custom_role
 }
@@ -49,23 +47,27 @@ resource "azurerm_resource_group" "aviatrix_rg" {
 
 # 3.0. Create Storage Account
 resource "azurerm_storage_account" "aviatrix_controller_storage" {
-  name                     = var.storage_account_name == "" ? "aviatrixstorage${random_id.aviatrix.hex}" : var.storage_account_name
-  resource_group_name      = azurerm_resource_group.aviatrix_rg.name
-  location                 = azurerm_resource_group.aviatrix_rg.location
-  account_tier             = "Standard"
-  allow_blob_public_access = true
-  account_replication_type = "LRS"
+  #checkov:skip=CKV_AZURE_59:This storage account requires public access
+  name                      = var.storage_account_name == "" ? "aviatrixstorage${random_id.aviatrix.hex}" : var.storage_account_name
+  resource_group_name       = azurerm_resource_group.aviatrix_rg.name
+  location                  = azurerm_resource_group.aviatrix_rg.location
+  account_tier              = "Standard"
+  allow_blob_public_access  = true
+  account_replication_type  = "LRS"
+  min_tls_version           = "TLS1_2"
+  enable_https_traffic_only = true
 }
 
 # 3.1. Create Storage Container
 resource "azurerm_storage_container" "aviatrix_backup_container" {
   name                  = lower("${var.scale_set_controller_name}-backup")
   storage_account_name  = azurerm_storage_account.aviatrix_controller_storage.name
-  container_access_type = "blob"
+  container_access_type = "private"
 }
 
 # 4.0. Create Key Vault
 resource "azurerm_key_vault" "aviatrix_key_vault" {
+  #checkov:skip=CKV_AZURE_109:This key vault cannot be locked down.
   name                        = var.key_vault_name == "" ? "aviatrix-key-vault-${random_id.aviatrix.hex}" : var.key_vault_name
   resource_group_name         = azurerm_resource_group.aviatrix_rg.name
   location                    = azurerm_resource_group.aviatrix_rg.location
@@ -92,6 +94,7 @@ resource "azurerm_key_vault_secret" "aviatrix_arm_secret" {
   name         = "aviatrix-arm-key"
   value        = module.aviatrix_controller_arm.application_key
   key_vault_id = azurerm_key_vault.aviatrix_key_vault.id
+  content_type = "Controller Service Principal Key"
 }
 
 # 4.3. Add Controller Password to Key Vault
@@ -102,6 +105,7 @@ resource "azurerm_key_vault_secret" "controller_key_secret" {
   name         = "aviatrix-controller-key"
   value        = var.avx_controller_admin_password == "" ? random_password.generate_controller_secret[0].result : var.avx_controller_admin_password
   key_vault_id = azurerm_key_vault.aviatrix_key_vault.id
+  content_type = "Aviatrix Controller Admin Password"
 }
 
 # 5.0. Create Virtual Network
@@ -305,8 +309,8 @@ data "azurerm_virtual_machine" "vm_data" {
 
 # 9.0. Initial Controller Configurations (occurs only on first deployment)
 module "aviatrix_controller_initialize" {
-  source = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize"
-  # source                        = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize" #TODO: Change this to main repo when done testing.
+  source = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize?ref=master"
+  #source                        = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize" #TODO: Change this to main repo when done testing.
   avx_controller_public_ip      = azurerm_public_ip.aviatrix_lb_public_ip.ip_address
   avx_controller_private_ip     = data.azurerm_virtual_machine.vm_data.private_ip_address
   avx_controller_admin_email    = var.avx_controller_admin_email
@@ -434,7 +438,11 @@ resource "azurerm_function_app" "controller_app" {
   storage_account_access_key = azurerm_storage_account.aviatrix_controller_storage.primary_access_key
   os_type                    = "linux"
   version                    = "~4"
+  https_only                 = true
 
+  auth_settings {
+    enabled = true
+  }
   identity {
     type = "UserAssigned"
     identity_ids = [
@@ -461,6 +469,7 @@ resource "azurerm_function_app" "controller_app" {
   site_config {
     linux_fx_version = "Python|3.9"
     ftps_state       = "Disabled"
+    http2_enabled    = true
   }
   depends_on = [
     module.aviatrix_controller_initialize
