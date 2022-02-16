@@ -43,8 +43,8 @@ module "aviatrix_controller_arm" {
 
 # 2.0. Create the Resource Group
 resource "azurerm_resource_group" "aviatrix_rg" {
-  location = var.location
   name     = var.resource_group_name
+  location = var.location
 }
 
 # 3.0. Create Storage Account
@@ -66,7 +66,7 @@ resource "azurerm_storage_container" "aviatrix_backup_container" {
 
 # 4.0. Create Key Vault
 resource "azurerm_key_vault" "aviatrix_key_vault" {
-  name                        = var.key_vault_name == "" ? "aviatrix-key-vault${random_id.aviatrix.hex}" : var.key_vault_name
+  name                        = var.key_vault_name == "" ? "aviatrix-key-vault-${random_id.aviatrix.hex}" : var.key_vault_name
   resource_group_name         = azurerm_resource_group.aviatrix_rg.name
   location                    = azurerm_resource_group.aviatrix_rg.location
   enabled_for_disk_encryption = true
@@ -185,18 +185,22 @@ resource "azurerm_network_security_group" "aviatrix_controller_nsg" {
   name                = var.network_security_group_controller_name
   resource_group_name = azurerm_resource_group.aviatrix_rg.name
   location            = azurerm_resource_group.aviatrix_rg.location
-  security_rule {
-    access                     = "Allow"
-    direction                  = "Inbound"
-    name                       = "https"
-    priority                   = "200"
-    protocol                   = "TCP"
-    source_port_range          = "*"
-    destination_port_range     = "443"
-    source_address_prefixes    = var.aviatrix_controller_security_group_allowed_ips
-    destination_address_prefix = "*"
-    description                = "httpsInboundToControllerScaleSet"
-  }
+}
+
+# 7.1. Create Rule For Allowed HTTPS Inbound IP Addresses
+resource "azurerm_network_security_rule" "user_defined_rules" {
+  name                        = "httpsInboundToScaleSet"
+  resource_group_name         = azurerm_resource_group.aviatrix_rg.name
+  network_security_group_name = azurerm_network_security_group.aviatrix_controller_nsg.name
+  access                      = "Allow"
+  direction                   = "Inbound"
+  priority                    = "200"
+  protocol                    = "TCP"
+  source_port_range           = "*"
+  destination_port_range      = "443"
+  source_address_prefixes     = var.aviatrix_controller_security_group_allowed_ips
+  destination_address_prefix  = "*"
+  description                 = "httpsInboundToControllerScaleSet"
 }
 
 # 8.0 Deploy Aviatrix Controller Scale Set
@@ -365,11 +369,13 @@ resource "time_sleep" "sleep_1m_user_identity" {
 # 10.3. Assign User Identity to Custom Role
 resource "azurerm_role_assignment" "aviatrix_custom_role" {
   depends_on = [
-    time_sleep.sleep_1m_user_identity
+    time_sleep.sleep_1m_user_identity,
+    azurerm_role_definition.aviatrix_function_role,
+    azurerm_user_assigned_identity.aviatrix_identity
   ]
-  scope                = azurerm_resource_group.aviatrix_rg.id
-  role_definition_id   = azurerm_role_definition.aviatrix_function_role.role_definition_resource_id
-  principal_id         = azurerm_user_assigned_identity.aviatrix_identity.principal_id
+  scope              = azurerm_resource_group.aviatrix_rg.id
+  role_definition_id = azurerm_role_definition.aviatrix_function_role.role_definition_resource_id
+  principal_id       = azurerm_user_assigned_identity.aviatrix_identity.principal_id
 }
 
 # 10.4. Assign User Identity to Storage Blob Reader Role
@@ -379,7 +385,14 @@ resource "azurerm_role_assignment" "aviatrix_function_blob_role" {
   principal_id         = azurerm_user_assigned_identity.aviatrix_identity.principal_id
 }
 
-# 10.5. Assign User Identity to Key Vault Secrets User Role
+# 10.5. Assign User Identity to Storage Queue Role
+resource "azurerm_role_assignment" "aviatrix_function_queue_role" {
+  scope                = azurerm_storage_account.aviatrix_controller_storage.id
+  role_definition_name = "Storage Queue Data Reader"
+  principal_id         = azurerm_user_assigned_identity.aviatrix_identity.principal_id
+}
+
+# 10.6. Assign User Identity to Key Vault Secrets User Role
 resource "azurerm_role_assignment" "aviatrix_function_vault_role" {
   depends_on = [
     azurerm_role_assignment.key_vault_pipeline_service_principal
@@ -388,15 +401,6 @@ resource "azurerm_role_assignment" "aviatrix_function_vault_role" {
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.aviatrix_identity.principal_id
 }
-
-# resource "azurerm_role_assignment" "aviatrix_function_queue_role" {
-#   scope                = azurerm_storage_account.aviatrix_controller_storage.id
-#   role_definition_name = "Storage Queue Data Reader"
-#   principal_id         = azurerm_user_assigned_identity.aviatrix_identity.principal_id
-# }
-
-
-### Deploy Function App Resources ###
 
 # 11.0. Deploy Application Insights
 resource "azurerm_application_insights" "application_insights" {
@@ -422,7 +426,7 @@ resource "azurerm_app_service_plan" "controller_app_service_plan" {
 
 # 11.2. Deploy Controller Function App
 resource "azurerm_function_app" "controller_app" {
-  name                       = var.function_app_name
+  name                       = var.function_app_name == "" ? "aviatrix-controller-app-${random_id.aviatrix.hex}" : var.function_app_name
   resource_group_name        = azurerm_resource_group.aviatrix_rg.name
   location                   = azurerm_resource_group.aviatrix_rg.location
   app_service_plan_id        = azurerm_app_service_plan.controller_app_service_plan.id
@@ -463,18 +467,34 @@ resource "azurerm_function_app" "controller_app" {
   ]
 }
 
-# 11.3. Retrieve Function App Keys
+# 11.3. Add Function APP Public IP's to Network Security Group
+resource "azurerm_network_security_rule" "function_app_rules" {
+  name                        = "httpsFunctionAppInboundToScaleSet"
+  resource_group_name         = azurerm_resource_group.aviatrix_rg.name
+  network_security_group_name = azurerm_network_security_group.aviatrix_controller_nsg.name
+  access                      = "Allow"
+  direction                   = "Inbound"
+  priority                    = "201"
+  protocol                    = "TCP"
+  source_port_range           = "*"
+  destination_port_range      = "443"
+  source_address_prefixes     = split(",", azurerm_function_app.controller_app.possible_outbound_ip_addresses)
+  destination_address_prefix  = "*"
+  description                 = "Function App Public IP's inbound to scale set"
+}
+
+# 11.4. Retrieve Function App Keys
 data "azurerm_function_app_host_keys" "func_keys" {
   name                = azurerm_function_app.controller_app.name
   resource_group_name = azurerm_resource_group.aviatrix_rg.name
 }
 
-# 11.4. Create Alerting Action Group
+# 12.0 Create Function App Action Group
 resource "azurerm_monitor_action_group" "aviatrix_controller_action" {
   enabled             = true
-  name                = var.action_group_name
+  name                = var.function_action_group_name
   resource_group_name = azurerm_resource_group.aviatrix_rg.name
-  short_name          = "avx-ctrl"
+  short_name          = "avx-function"
   tags                = {}
 
   azure_function_receiver {
@@ -492,7 +512,23 @@ resource "azurerm_monitor_action_group" "aviatrix_controller_action" {
   }
 }
 
-# 11.5 Create Metric Alert for Load Balancer Health
+# 12.1. Create Notification Action Group
+resource "azurerm_monitor_action_group" "aviatrix_notification_action_group" {
+  count               = var.notification_action_group_id == "" ? 1 : 0
+  enabled             = true
+  name                = var.notification_action_group_name
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  short_name          = "avx-notify"
+  tags                = {}
+
+  email_receiver {
+    email_address           = var.avx_account_email
+    name                    = "sendtoadmin"
+    use_common_alert_schema = false
+  }
+}
+
+# 12.2. Create Metric Alert for Load Balancer Health
 resource "azurerm_monitor_metric_alert" "aviatrix_controller_alert" {
   auto_mitigate       = true
   enabled             = true
@@ -529,7 +565,133 @@ resource "azurerm_monitor_metric_alert" "aviatrix_controller_alert" {
   }
 }
 
-# 11.6 Wait 1 Minute Before Starting the Function App Code
+# 12.3. Create Notification Alert for Function App being Triggered
+resource "azurerm_monitor_metric_alert" "function_app_triggered_alert" {
+  name                = "Aviatrix Function App Failover Triggered"
+  description         = "Sends Information Notification when Azure Aviatrix Controller HA is triggered."
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  auto_mitigate       = true
+  enabled             = true
+  frequency           = "PT1M"
+  window_size         = "PT1M"
+  scopes = [
+    azurerm_application_insights.application_insights.id
+  ]
+  target_resource_type = "Microsoft.Insights/components"
+  severity             = 3
+
+  action {
+    action_group_id = var.notification_action_group_id == "" ? azurerm_monitor_action_group.aviatrix_notification_action_group[0].id : var.notification_action_group_id
+  }
+
+  criteria {
+    metric_name            = "requests/count"
+    metric_namespace       = "Microsoft.Insights/components"
+    aggregation            = "Count"
+    operator               = "GreaterThan"
+    skip_metric_validation = false
+    threshold              = 0
+  }
+}
+
+# 12.4. Create Notification Alert for Function App Exception
+resource "azurerm_monitor_metric_alert" "function_app_exception_alert" {
+  name                = "Aviatrix Function App Failover - Exception"
+  description         = "Sends Error Notification when Azure Aviatrix Controller Function App Exception Occurs."
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  auto_mitigate       = true
+  enabled             = true
+  frequency           = "PT1M"
+  window_size         = "PT1M"
+  scopes = [
+    azurerm_application_insights.application_insights.id
+  ]
+  target_resource_type = "Microsoft.Insights/components"
+  severity             = 1
+
+  action {
+    action_group_id = var.notification_action_group_id == "" ? azurerm_monitor_action_group.aviatrix_notification_action_group[0].id : var.notification_action_group_id
+  }
+
+  criteria {
+    metric_name            = "exceptions/server"
+    metric_namespace       = "Microsoft.Insights/components"
+    aggregation            = "Count"
+    operator               = "GreaterThan"
+    skip_metric_validation = false
+    threshold              = 0
+  }
+}
+
+# 12.5. Create Notification Alert for Function App Failure
+resource "azurerm_monitor_metric_alert" "function_app_failed_alert" {
+  name                = "Aviatrix Function App Failover - Failed"
+  description         = "Sends Error Notification when Azure Aviatrix Controller Function App Failover Request Fails."
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  auto_mitigate       = true
+  enabled             = true
+  frequency           = "PT1M"
+  window_size         = "PT1M"
+  scopes = [
+    azurerm_application_insights.application_insights.id
+  ]
+  target_resource_type = "Microsoft.Insights/components"
+  severity             = 1
+
+  action {
+    action_group_id = var.notification_action_group_id == "" ? azurerm_monitor_action_group.aviatrix_notification_action_group[0].id : var.notification_action_group_id
+  }
+
+  criteria {
+    metric_name            = "requests/count"
+    metric_namespace       = "Microsoft.Insights/components"
+    aggregation            = "Count"
+    operator               = "GreaterThan"
+    skip_metric_validation = false
+    threshold              = 0
+    dimension {
+      name     = "request/resultCode"
+      operator = "Exclude"
+      values   = ["200", "501"]
+    }
+  }
+}
+
+# 12.6. Create Notification Alert for Function App Success
+resource "azurerm_monitor_metric_alert" "function_app_success_alert" {
+  name                = "Aviatrix Function App Failover - Suceeded"
+  description         = "Sends Information Notification when Azure Aviatrix Controller Function App Failover Request Succeeds."
+  resource_group_name = azurerm_resource_group.aviatrix_rg.name
+  auto_mitigate       = true
+  enabled             = true
+  frequency           = "PT1M"
+  window_size         = "PT1M"
+  scopes = [
+    azurerm_application_insights.application_insights.id
+  ]
+  target_resource_type = "Microsoft.Insights/components"
+  severity             = 3
+
+  action {
+    action_group_id = var.notification_action_group_id == "" ? azurerm_monitor_action_group.aviatrix_notification_action_group[0].id : var.notification_action_group_id
+  }
+
+  criteria {
+    metric_name            = "requests/count"
+    metric_namespace       = "Microsoft.Insights/components"
+    aggregation            = "Count"
+    operator               = "GreaterThan"
+    skip_metric_validation = false
+    threshold              = 0
+    dimension {
+      name     = "request/resultCode"
+      operator = "Include"
+      values   = ["200"]
+    }
+  }
+}
+
+# 13.0. Wait 1 Minute Before Starting the Function App Code
 resource "time_sleep" "controller_function_provision" {
   create_duration = "1m"
 
@@ -538,12 +700,15 @@ resource "time_sleep" "controller_function_provision" {
   }
 }
 
-# 11.7 Deploy Controller Function App Code
+# 13.1. Deploy Controller Function App Code
 resource "null_resource" "run_controller_function" {
   depends_on = [
     time_sleep.controller_function_provision
   ]
+  # triggers = {
+  #   timestamp = timestamp()
+  # }
   provisioner "local-exec" {
-    command = "cd azure-controller && func azure functionapp publish ${azurerm_function_app.controller_app.name}"
+    command = "cd azure-controller && func azure functionapp publish ${azurerm_function_app.controller_app.name} --build remote"
   }
 }

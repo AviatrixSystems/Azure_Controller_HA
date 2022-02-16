@@ -3,6 +3,7 @@
 ## Description
 
 This Terraform module:
+
 - Creates an Aviatrix Controller in Azure using scale set and load balancer.
 - Creates an access account on the controller.
 - Creates storage and container required for backup/function logs.
@@ -14,6 +15,7 @@ This Terraform module:
 1. [Terraform v0.13+](https://www.terraform.io/downloads.html) - execute terraform files
 2. [Python3](https://www.python.org/downloads/) - execute `accept_license.py` and `aviatrix_controller_init.py` python
    scripts
+3. [Azure Functions Core Tools](https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=v4%2Cwindows%2Ccsharp%2Cportal%2Cbash)
 
 ## Providers
 
@@ -25,7 +27,6 @@ The module `aviatrix_controller_arm` does not currently support `azuread` versio
 | <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | \>= 2.0 |
 | <a name="provider_null"></a> [null](#provider\_null) | \>= 2.0 |
 
-
 ## Available Modules
 
 Module  | Description |
@@ -36,27 +37,27 @@ Module  | Description |
 
 ## Procedures for Building and Initializing a Controller in Azure
 
-### 1. Create the Python virtual environment and install required dependencies
+### Create the Python virtual environment and install required dependencies
 
 Create the virtual environment.
 
 ``` shell
- python3 -m venv venv
+python3 -m venv venv
 ```
 
 Activate the virtual environment.
 
 ``` shell
- source venv/bin/activate
+source venv/bin/activate
 ```
 
 Install required dependencies.
 
 ``` shell
- pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
-### 2. Authenticating to Azure
+### Authenticating to Azure
 
 Please refer to the documentation for
 the [azurerm](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs)
@@ -69,11 +70,7 @@ Pick the subscription you want and use it in the command below.
 az account set --subscription <subscription_id>
 ````
 
-### 3. Azure core tools
-- [Azure Functions Core Tools](https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=v4%2Cwindows%2Ccsharp%2Cportal%2Cbash)
-
-### 4. Applying *.tfvars* configuration
-
+### Applying .tfvars configuration
 
 ```hcl
 app_name                            = "<< app registration name >>"
@@ -95,11 +92,59 @@ aviatrix_customer_id                = "<< your customer license id >>"
 controller_version                  = "<< your controller version >>"
 ```
 
-*Execute*
+```hcl
+# Resource Group Variables
+subscription_id                                = "<Subscription ID>"                   # Required; Subscription ID where resources are deployed.
+to_be_created_service_principal_name           = "<Name of Service Principal>"         # Optional; The name of the App Registration/Service Principal to be created.
+create_custom_role                             = true/false                            # Optional; Creates the App Registration/Service Principal with specific roles instead of 'Contributor' Permissions. Default = false
+resource_group_name                            = "<Name of Resource Group>"            # Required; Creates a Resource Group with this name.
+location                                       = "<Name of Region/Location>"           # Required; Creates all resources in this region/location.
+storage_account_name                           = "<Name of Storage Account>"           # Optional; Creates Storage account with this name. Default = "aviatrixstorage<random hex value>"
+key_vault_name                                 = "<Name of Key Vault>"                 # Optional; Creates Key vault with this name. Default = "aviatrix-key-vault-<random hex value>"
+virtual_network_name                           = "<Name of Virtual Network>"           # Optional; Creates Virtual Network with this name. Default = "aviatrix-vnet"
+virtual_network_cidr                           = "<Virtual Network Address Space>"     # Optional; Creates Virtual Network with this address space. Default = "10.0.0.0/23"
+subnet_name                                    = "<Name of Subnet>"                    # Optional; Creates Subnet with this name. Default = "aviatrix-subnet"
+subnet_cidr                                    = "<Subnet Cidr>"                       # Optional; Creates Subnet with this cidr. Default = "10.0.0.0/24"
+load_balancer_frontend_public_ip_name          = "<Name of LB Frontend Public IP>"     # Optional; Creates LoadBalancer Frontend IP with this name. Default = "aviatrix-lb-public-ip"
+load_balancer_name                             = "<Name of LoadBalancer>"              # Optional; Creates LoadBalancer with this name. Default = "aviatrix-lb"
+load_balancer_frontend_name                    = "<Name of LoadBalancer Frontend>"     # Optional; Creates LoadBalancer Frontend Configurations with this name. Default = "aviatrix-lb-frontend"
+load_balancer_controller_backend_pool_name     = "<Name of LoadBalancer Backend Pool>" # Optional; Creates LoadBalancer Backend Pool with this name. Default = "aviatrix-controller-backend"
+load_balancer_controller_health_probe_name     = "<Name of LoadBalancer Health Probe>" # Optional; Creates LoadBalancer Health Probe with this name. Default = "aviatrix-controller-probe"
+load_balancer_controller_rule_name             = "<Name of LoadBalancer Rule>"         # Optional; Creates LoadBalancer Rule with this name. Default = "aviatrix-controller-lb-rule"
+network_security_group_controller_name         = "<Name of Network Security Group>"    # Optional; Creates Network Security Group with this name. Default = "aviatrix-controller-nsg"
+aviatrix_controller_security_group_allowed_ips = [<List of Public IP's to be Allowed>] # Optional; Creates Network Security Group Rule with these allowed IP's. Default = []
+
+# Aviatrix Controller Virtual Machine Variables
+controller_virtual_machine_size           = "<Controller VM Size>"                     # Optional; Creates Scale Set with this size Virtual Machine. Default = "Standard_A4_v2"
+scale_set_controller_name                 = "<Controller Scale Set Name>"              # Optional; Creates Scale Set with this name. Default = "aviatrix-controller-scale-set"
+controller_virtual_machine_admin_username = "<VM Username>"                            # Optional; Creates Virtual Machine with this username. Default = "aviatrix"
+controller_virtual_machine_admin_password = "<VM Password>"                            # Optional; Creates Virtual machine with this password. Default = "<autogenerated value>"
+controller_public_ssh_key                 = "<SSH Public Key>"                         # Optional: The Public Key to be used for the Virtual Machine. Default = ""
+
+# Aviatrix Controller Configuration Variables
+avx_access_account_name       = "travis-testing-account"           # Required
+avx_account_email             = "tdever@aviatrix.com"              # Required
+avx_controller_admin_email    = "tdever@aviatrix.com"              # Required
+avx_aviatrix_customer_id      = "avx-dev-1613002716.89"            # Required
+avx_controller_admin_password = ""
+avx_controller_version        = "6.5"
+
+# Function App Variables
+application_insights_name              = "travis-controller-ai"
+app_service_plan_name                  = "travis-controller-app-service"
+function_app_name                      = "travis-controller-function-app"
+user_assigned_identity_name            = "travis-controller-user-identity"
+aviatrix_function_app_custom_role_name = "travis-controller-custom-role"
+function_action_group_name             = "travis-function-ag"
+notification_action_group_name         = "travis-notify-ag"
+notification_action_group_id           = ""
+```
+
+### Execute
 
 ```shell
 terraform init
-terraform apply
+terraform apply --var-file=<terrraform.tfvars>
 ````
 
 Additional Information:
@@ -107,12 +152,12 @@ Additional Information:
 1. Total expected time for failover ~20 mins
     - ~5 min for azure alert to get fired as controller unhealthy.
     - ~15 min to deploy, initialize, restore the new controller.
-    
+
 2. Makes sure to enable the backup on the healthy controller prior to triggering the failover.
 
 3. Failover logs can be viewed in function monitor logs.
 
-Note: 
+Note:
 
 Alert will not be triggered when instance is deleted or stopped manually. It will only be triggered when loadbalancer health checks are failed.
 To test the failover, insert a deny rule on controller SG by blocking https traffic from Azure load balancer(sevice tag).
