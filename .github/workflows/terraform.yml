@@ -37,7 +37,7 @@ jobs:
       - name: render-terraform-module-docs
         uses: terraform-docs/gh-actions@main
         with:
-          find-dir: modules
-          output-file: README.md
+          find-dir: .
+          output-file: MODULE_README.md
           output-method: inject
           git-push: "true"
