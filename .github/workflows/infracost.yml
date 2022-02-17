@@ -23,7 +23,7 @@ jobs:
         api-key: ${{ secrets.INFRACOST_API_KEY }}
 
     - name: Run Infracost
-      run: infracost breakdown --path=. --format=json --out-file=/tmp/infracost.json --terraform-plan-flags "-var-file=default.tfvars" "-var=subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }}" "-var=avx_aviatrix_customer_id=${{ secrets.AVX_CUSTOMER_ID }}" "-var=avx_account_email=${{ secrets.ADMIN_EMAIL }}" "-var=avx_controller_admin_email=${{ secrets.ADMIN_EMAIL }}"
+      run: infracost breakdown --path=. --format=json --out-file=/tmp/infracost.json --terraform-plan-flags "-var-file=default.tfvars -var=subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }} -var=avx_aviatrix_customer_id=${{ secrets.AVX_CUSTOMER_ID }} -var=avx_account_email=${{ secrets.ADMIN_EMAIL }} -var=avx_controller_admin_email=${{ secrets.ADMIN_EMAIL }}"
       env:
         ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
         ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
