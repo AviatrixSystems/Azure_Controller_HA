@@ -12,15 +12,39 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v2
 
-    - name: Run infracost diff
-      uses: infracost/infracost-gh-action@master # Use a specific version instead of master if locking is preferred
+    - name: Install terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_wrapper: false
+
+    - name: Setup Infracost
+      uses: infracost/actions/setup@v1
+      with:
+        api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+    - name: Run Infracost
+      run: infracost breakdown --path=. --format=json --out-file=/tmp/infracost.json --terraform-plan-flags -var-file=default.tfvars -var="subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }}" -var="avx_aviatrix_customer_id=${{ secrets.AVX_CUSTOMER_ID }}" -var="avx_account_email=${{ secrets.ADMIN_EMAIL }}" -var="avx_controller_admin_email=${{ secrets.ADMIN_EMAIL }}"
       env:
-        INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
         ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
         ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
         ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
+    - name: Post the comment
+      uses: infracost/actions/comment@v1
       with:
-        path: .
-        terraform_plan_flags: -var-file=default.tfvars -var="subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }}" -var="avx_aviatrix_customer_id=${{ secrets.AVX_CUSTOMER_ID }}" -var="avx_account_email=${{ secrets.ADMIN_EMAIL }}" -var="avx_controller_admin_email=${{ secrets.ADMIN_EMAIL }}"
+        path: /tmp/infracost.json
+        behavior: update
+
+    # - name: Run infracost diff
+    #   uses: infracost/infracost-gh-action@master # Use a specific version instead of master if locking is preferred
+    #   env:
+    #     INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #     ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+    #     ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+    #     ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+    #     ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+    #   with:
+    #     path: .
+    #     terraform_plan_flags: -var-file=default.tfvars -var="subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }}" -var="avx_aviatrix_customer_id=${{ secrets.AVX_CUSTOMER_ID }}" -var="avx_account_email=${{ secrets.ADMIN_EMAIL }}" -var="avx_controller_admin_email=${{ secrets.ADMIN_EMAIL }}"
