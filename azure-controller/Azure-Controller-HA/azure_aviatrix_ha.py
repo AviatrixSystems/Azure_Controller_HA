@@ -881,8 +881,7 @@ def restore_ctrl_backup(creds, controller_ip, cid, storage, container, blob):
     else:
         output = response.json()
         logging.info(output)
-
-    return output
+        return output
 
 
 def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
