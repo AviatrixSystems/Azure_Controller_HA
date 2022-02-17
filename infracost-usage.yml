@@ -1,0 +1,33 @@
+# You can use this file to define resource usage estimates for Infracost to use when calculating
+# the cost of usage-based resource, such as AWS S3 or Lambda.
+# `infracost breakdown --usage-file infracost-usage.yml [other flags]`
+# See https://infracost.io/usage-file/ for docs
+version: 0.1
+resource_usage:
+  ##
+  ## The following usage values are all commented-out, you can uncomment resources and customize as needed.
+  ##
+  # azurerm_application_insights.application_insights:
+    # monthly_data_ingested_gb: 0 # Monthly amount of data ingested in GB.
+  azurerm_function_app.controller_app:
+    # monthly_executions: 0 # Monthly executions to the function. Only applicable for Consumption plan.
+    # execution_duration_ms: 0 # Average duration of each execution in milliseconds. Only applicable for Consumption plan.
+    # memory_mb: 0 # Average amount of memory consumed by function in MB. Only applicable for Consumption plan.
+    instances: 1 # Number of instances. Only applicable for Premium plan.
+  # azurerm_lb.aviatrix_lb:
+    # monthly_data_processed_gb: 0 # Monthly inbound and outbound data processed in GB.
+  # azurerm_storage_account.aviatrix_controller_storage:
+    # data_at_rest_storage_gb: 0.0 # Total size of Data at Rest in GB (File storage).
+    # early_deletion_gb: 0.0 # Total size of Early deletion data in GB.
+    # snapshots_storage_gb: 0.0 # Total size of Snapshots in GB (File storage).
+    # metadata_at_rest_storage_gb: 0.0 # Total size of Metadata in GB (File storage).
+    # storage_gb: 0.0 # Total size of storage in GB.
+    # monthly_iterative_write_operations: 0 # Monthly number of Iterative write operations (GPv2).
+    # monthly_write_operations: 0 # Monthly number of Write operations.
+    # monthly_list_and_create_container_operations: 0 # Monthly number of List and Create Container operations.
+    # monthly_iterative_read_operations: 0 # Monthly number of Iterative read operations (GPv2).
+    # monthly_read_operations: 0 # Monthly number of Read operations.
+    # monthly_other_operations: 0 # Monthly number of All other operations.
+    # monthly_data_retrieval_gb: 0.0 # Monthly number of data retrieval in GB.
+    # monthly_data_write_gb: 0.0 # Monthly number of data write in GB.
+    # blob_index_tags: 0 # Total number of Blob indexes.

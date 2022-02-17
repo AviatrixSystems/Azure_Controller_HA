@@ -471,6 +471,7 @@ resource "azurerm_function_app" "controller_app" {
     linux_fx_version = "Python|3.9"
     ftps_state       = "Disabled"
     http2_enabled    = true
+    always_on        = true
   }
   depends_on = [
     module.aviatrix_controller_initialize
