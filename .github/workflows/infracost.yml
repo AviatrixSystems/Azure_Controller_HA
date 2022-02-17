@@ -23,4 +23,4 @@ jobs:
         ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
       with:
         path: .
-        terraform_plan_flags: -var-file=my.tfvars -var="subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }}" -var="avx_aviatrix_customer_id=${{ secrets.AVX_CUSTOMER_ID }}" -var="avx_account_email=${{ secrets.ADMIN_EMAIL }}" -var="avx_controller_admin_email=${{ secrets.ADMIN_EMAIL }}"
+        terraform_plan_flags: -var-file=default.tfvars -var="subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }}" -var="avx_aviatrix_customer_id=${{ secrets.AVX_CUSTOMER_ID }}" -var="avx_account_email=${{ secrets.ADMIN_EMAIL }}" -var="avx_controller_admin_email=${{ secrets.ADMIN_EMAIL }}"
