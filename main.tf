@@ -33,7 +33,6 @@ data "azurerm_client_config" "current" {}
 
 # 1.0. Create Custom Service Principal for Aviatrix Controller
 module "aviatrix_controller_arm" {
-  #source = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure" #TODO: Change this to main repo when done testing.
   source             = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure?ref=v2.0.0"
   app_name           = var.to_be_created_service_principal_name
   create_custom_role = var.create_custom_role
@@ -255,7 +254,7 @@ resource "azurerm_orchestrated_virtual_machine_scale_set" "aviatrix_scale_set" {
       computer_name_prefix            = "aviatrix-"
       disable_password_authentication = var.controller_public_ssh_key == "" ? false : true
       admin_username                  = var.controller_virtual_machine_admin_username
-      admin_password                  = length(var.controller_public_ssh_key) == 0 ? var.controller_virtual_machine_admin_password : null
+      admin_password                  = length(var.controller_public_ssh_key) > 0 ? null : var.controller_virtual_machine_admin_password == "" ? random_password.generate_controller_secret[0].result : var.controller_virtual_machine_admin_password
       provision_vm_agent              = true
       dynamic "admin_ssh_key" {
         for_each = var.controller_public_ssh_key == "" ? [] : [true]
@@ -310,7 +309,6 @@ data "azurerm_virtual_machine" "vm_data" {
 # 9.0. Initial Controller Configurations (occurs only on first deployment)
 module "aviatrix_controller_initialize" {
   source = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize?ref=v2.0.0"
-  #source                        = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize" #TODO: Change this to main repo when done testing.
   avx_controller_public_ip      = azurerm_public_ip.aviatrix_lb_public_ip.ip_address
   avx_controller_private_ip     = data.azurerm_virtual_machine.vm_data.private_ip_address
   avx_controller_admin_email    = var.avx_controller_admin_email
