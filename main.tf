@@ -67,7 +67,7 @@ resource "azurerm_storage_container" "aviatrix_backup_container" {
 # 4.0. Create Key Vault
 resource "azurerm_key_vault" "aviatrix_key_vault" {
   #checkov:skip=CKV_AZURE_109:This key vault cannot be locked down.
-  name                        = var.key_vault_name == "" ? "aviatrix-key-vault-${random_id.aviatrix.hex}" : var.key_vault_name
+  name                        = var.key_vault_name == "" ? "aviatrix-kv-${random_id.aviatrix.hex}" : var.key_vault_name
   resource_group_name         = azurerm_resource_group.aviatrix_rg.name
   location                    = azurerm_resource_group.aviatrix_rg.location
   enabled_for_disk_encryption = true
