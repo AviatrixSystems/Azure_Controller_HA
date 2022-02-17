@@ -176,13 +176,13 @@ variable "avx_controller_version" {
 variable "application_insights_name" {
   type        = string
   description = "The name of the application insights to be deployed for the function app."
-  default     = "aviatrix-function-application-insights"
+  default     = "aviatrix-function-app-insights"
 }
 
 variable "app_service_plan_name" {
   type        = string
   description = "The name of the app service plan to be deployed."
-  default     = "aviatrix-function-app-service-plan"
+  default     = "aviatrix-function-app-sp"
 }
 
 variable "function_app_name" {

@@ -34,7 +34,7 @@ data "azurerm_client_config" "current" {}
 # 1.0. Create Custom Service Principal for Aviatrix Controller
 module "aviatrix_controller_arm" {
   #source = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure" #TODO: Change this to main repo when done testing.
-  source             = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure?ref=master"
+  source             = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure?ref=v2.0.0"
   app_name           = var.to_be_created_service_principal_name
   create_custom_role = var.create_custom_role
 }
@@ -309,7 +309,7 @@ data "azurerm_virtual_machine" "vm_data" {
 
 # 9.0. Initial Controller Configurations (occurs only on first deployment)
 module "aviatrix_controller_initialize" {
-  source = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize?ref=master"
+  source = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize?ref=v2.0.0"
   #source                        = "github.com/t-dever/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize" #TODO: Change this to main repo when done testing.
   avx_controller_public_ip      = azurerm_public_ip.aviatrix_lb_public_ip.ip_address
   avx_controller_private_ip     = data.azurerm_virtual_machine.vm_data.private_ip_address
@@ -453,6 +453,8 @@ resource "azurerm_function_app" "controller_app" {
 
   app_settings = {
     "APPINSIGHTS_INSTRUMENTATIONKEY"  = azurerm_application_insights.application_insights.instrumentation_key,
+    "BUILD_FLAGS"                     = "UseExpressBuild",
+    "XDG_CACHE_HOME"                  = "/tmp/.cache",
     "func_client_id"                  = azurerm_user_assigned_identity.aviatrix_identity.client_id,
     "avx_tenant_id"                   = module.aviatrix_controller_arm.directory_id,
     "avx_client_id"                   = module.aviatrix_controller_arm.application_id,
@@ -501,6 +503,9 @@ data "azurerm_function_app_host_keys" "func_keys" {
 
 # 12.0 Create Function App Action Group
 resource "azurerm_monitor_action_group" "aviatrix_controller_action" {
+  lifecycle {
+    ignore_changes = [azure_function_receiver[0].http_trigger_url]
+  }
   enabled             = true
   name                = var.function_action_group_name
   resource_group_name = azurerm_resource_group.aviatrix_rg.name
@@ -575,42 +580,7 @@ resource "azurerm_monitor_metric_alert" "aviatrix_controller_alert" {
   }
 }
 
-# 12.3. Create Notification Alert for Function App being Triggered
-resource "azurerm_monitor_metric_alert" "function_app_triggered_alert" {
-  count               = var.enable_function_app_alerts ? 1 : 0
-  name                = "Aviatrix Function App Failover Triggered"
-  description         = "Sends Information Notification when Azure Aviatrix Controller HA is triggered."
-  resource_group_name = azurerm_resource_group.aviatrix_rg.name
-  auto_mitigate       = true
-  enabled             = true
-  frequency           = "PT1M"
-  window_size         = "PT1M"
-  scopes = [
-    azurerm_application_insights.application_insights.id
-  ]
-  target_resource_type = "Microsoft.Insights/components"
-  severity             = 3
-
-  action {
-    action_group_id = var.notification_action_group_id == "" ? azurerm_monitor_action_group.aviatrix_notification_action_group[0].id : var.notification_action_group_id
-  }
-
-  criteria {
-    metric_name            = "requests/count"
-    metric_namespace       = "Microsoft.Insights/components"
-    aggregation            = "Count"
-    operator               = "GreaterThan"
-    skip_metric_validation = false
-    threshold              = 0
-    dimension {
-      name     = "request/resultCode"
-      operator = "Include"
-      values   = ["200"]
-    }
-  }
-}
-
-# 12.4. Create Notification Alert for Function App Exception
+# 12.3. Create Notification Alert for Function App Exception
 resource "azurerm_monitor_metric_alert" "function_app_exception_alert" {
   count               = var.enable_function_app_alerts ? 1 : 0
   name                = "Aviatrix Function App Failover - Exception"
@@ -640,7 +610,7 @@ resource "azurerm_monitor_metric_alert" "function_app_exception_alert" {
   }
 }
 
-# 12.5. Create Notification Alert for Function App Failure
+# 12.4. Create Notification Alert for Function App Failure
 resource "azurerm_monitor_metric_alert" "function_app_failed_alert" {
   count               = var.enable_function_app_alerts ? 1 : 0
   name                = "Aviatrix Function App Failover - Failed"
@@ -675,7 +645,7 @@ resource "azurerm_monitor_metric_alert" "function_app_failed_alert" {
   }
 }
 
-# 12.6. Create Notification Alert for Function App Success
+# 12.5. Create Notification Alert for Function App Success
 resource "azurerm_monitor_metric_alert" "function_app_success_alert" {
   count               = var.enable_function_app_alerts ? 1 : 0
   name                = "Aviatrix Function App Failover - Suceeded"
