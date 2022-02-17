@@ -308,7 +308,7 @@ data "azurerm_virtual_machine" "vm_data" {
 
 # 9.0. Initial Controller Configurations (occurs only on first deployment)
 module "aviatrix_controller_initialize" {
-  source = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize?ref=v2.0.0"
+  source                        = "github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize?ref=v2.0.0"
   avx_controller_public_ip      = azurerm_public_ip.aviatrix_lb_public_ip.ip_address
   avx_controller_private_ip     = data.azurerm_virtual_machine.vm_data.private_ip_address
   avx_controller_admin_email    = var.avx_controller_admin_email
