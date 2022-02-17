@@ -441,7 +441,7 @@ resource "azurerm_function_app" "controller_app" {
   https_only                 = true
 
   auth_settings {
-    enabled = true
+    enabled                       = true
     unauthenticated_client_action = "AllowAnonymous"
   }
   identity {
