@@ -417,8 +417,8 @@ resource "azurerm_app_service_plan" "controller_app_service_plan" {
   name                = var.app_service_plan_name
   resource_group_name = azurerm_resource_group.aviatrix_rg.name
   location            = azurerm_resource_group.aviatrix_rg.location
-  kind     = "Linux"
-  reserved = true
+  kind                = "Linux"
+  reserved            = true
 
   sku {
     tier = "PremiumV2"
