@@ -442,6 +442,7 @@ resource "azurerm_function_app" "controller_app" {
 
   auth_settings {
     enabled = true
+    unauthenticated_client_action = "AllowAnonymous"
   }
   identity {
     type = "UserAssigned"
@@ -601,6 +602,11 @@ resource "azurerm_monitor_metric_alert" "function_app_triggered_alert" {
     operator               = "GreaterThan"
     skip_metric_validation = false
     threshold              = 0
+    dimension {
+      name     = "request/resultCode"
+      operator = "Include"
+      values   = ["200"]
+    }
   }
 }
 

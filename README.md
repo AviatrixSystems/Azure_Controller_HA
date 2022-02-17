@@ -122,11 +122,11 @@ controller_virtual_machine_admin_password = "<VM Password>"                     
 controller_public_ssh_key                 = "<SSH Public Key>"                         # Optional: The Public Key to be used for the Virtual Machine. Default = ""
 
 # Aviatrix Controller Configuration Variables
-avx_access_account_name       = # Required
-avx_account_email             = # Required
-avx_controller_admin_email    = # Required
-avx_aviatrix_customer_id      = # Required
-avx_controller_admin_password = ""
+avx_access_account_name       = "<Account Name in Aviatrix Controller>" # Required
+avx_account_email             = "<Account Email Address>"               # Required
+avx_controller_admin_email    = "<Admin Account Email Address>"         # Required
+avx_aviatrix_customer_id      = "<License ID For Aviatrix Controller>"  # Required
+avx_controller_admin_password = "<Admin Password>"
 avx_controller_version        = "6.5"
 
 # Function App Variables
