@@ -37,7 +37,7 @@ jobs:
         api-key: ${{ secrets.INFRACOST_API_KEY }}
 
     - name: Run Infracost
-      run: infracost breakdown --path plan.json --format json --out-file=/tmp/infracost.json --usage-file infracost-usage.yml
+      run: infracost breakdown --path plan.json --format json --out-file=/tmp/infracost.json --sync-usage-file  --usage-file infracost-usage.yml
 
     - name: Post the comment
       uses: infracost/actions/comment@v1
