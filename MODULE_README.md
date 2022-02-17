@@ -19,8 +19,8 @@
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_aviatrix_controller_arm"></a> [aviatrix\_controller\_arm](#module\_aviatrix\_controller\_arm) | github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure | master |
-| <a name="module_aviatrix_controller_initialize"></a> [aviatrix\_controller\_initialize](#module\_aviatrix\_controller\_initialize) | github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize | master |
+| <a name="module_aviatrix_controller_arm"></a> [aviatrix\_controller\_arm](#module\_aviatrix\_controller\_arm) | github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure | v2.0.0 |
+| <a name="module_aviatrix_controller_initialize"></a> [aviatrix\_controller\_initialize](#module\_aviatrix\_controller\_initialize) | github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize | v2.0.0 |
 
 ## Resources
 
@@ -42,7 +42,6 @@
 | [azurerm_monitor_metric_alert.function_app_exception_alert](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_metric_alert) | resource |
 | [azurerm_monitor_metric_alert.function_app_failed_alert](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_metric_alert) | resource |
 | [azurerm_monitor_metric_alert.function_app_success_alert](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_metric_alert) | resource |
-| [azurerm_monitor_metric_alert.function_app_triggered_alert](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/monitor_metric_alert) | resource |
 | [azurerm_network_security_group.aviatrix_controller_nsg](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_security_group) | resource |
 | [azurerm_network_security_rule.function_app_rules](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_security_rule) | resource |
 | [azurerm_network_security_rule.user_defined_rules](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_security_rule) | resource |
@@ -74,8 +73,8 @@
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_app_service_plan_name"></a> [app\_service\_plan\_name](#input\_app\_service\_plan\_name) | The name of the app service plan to be deployed. | `string` | `"aviatrix-function-app-service-plan"` | no |
-| <a name="input_application_insights_name"></a> [application\_insights\_name](#input\_application\_insights\_name) | The name of the application insights to be deployed for the function app. | `string` | `"aviatrix-function-application-insights"` | no |
+| <a name="input_app_service_plan_name"></a> [app\_service\_plan\_name](#input\_app\_service\_plan\_name) | The name of the app service plan to be deployed. | `string` | `"aviatrix-function-app-sp"` | no |
+| <a name="input_application_insights_name"></a> [application\_insights\_name](#input\_application\_insights\_name) | The name of the application insights to be deployed for the function app. | `string` | `"aviatrix-function-app-insights"` | no |
 | <a name="input_aviatrix_controller_security_group_allowed_ips"></a> [aviatrix\_controller\_security\_group\_allowed\_ips](#input\_aviatrix\_controller\_security\_group\_allowed\_ips) | Incoming cidr for security group used by controller | `list(string)` | `[]` | no |
 | <a name="input_aviatrix_function_app_custom_role_name"></a> [aviatrix\_function\_app\_custom\_role\_name](#input\_aviatrix\_function\_app\_custom\_role\_name) | The name of the custom role to be created for the Aviatrix Function App to modify resources within the resource group. | `string` | `"aviatrix-function-custom-role"` | no |
 | <a name="input_avx_access_account_name"></a> [avx\_access\_account\_name](#input\_avx\_access\_account\_name) | aviatrix controller access account name | `string` | n/a | yes |
