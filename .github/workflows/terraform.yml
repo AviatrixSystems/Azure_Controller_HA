@@ -37,7 +37,21 @@ jobs:
       - name: render-terraform-module-docs
         uses: terraform-docs/gh-actions@main
         with:
-          find-dir: modules
-          output-file: README.md
+          find-dir: .
+          output-file: MODULE_README.md
           output-method: inject
           git-push: "true"
+
+  pre_commit:
+    runs-on: ubuntu-latest
+    name: Pre-Commit Checks
+    needs: [format_terraform, document_terraform]
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Pre-Commit
+        run: |
+          docker run -v $(pwd):/lint -w /lint ghcr.io/antonbabenko/pre-commit-terraform:latest run -a
