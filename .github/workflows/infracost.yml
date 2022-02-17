@@ -17,18 +17,27 @@ jobs:
       with:
         terraform_wrapper: false
 
+    - name: Terraform init
+      run: terraform init
+
+    - name: Terraform plan
+      run: terraform plan -out tfplan.binary
+      env:
+        ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
+    - name: Terraform show
+      run: terraform show -json tfplan.binary > plan.json
+
     - name: Setup Infracost
       uses: infracost/actions/setup@v1
       with:
         api-key: ${{ secrets.INFRACOST_API_KEY }}
 
     - name: Run Infracost
-      run: infracost breakdown --path=. --format=json --out-file=/tmp/infracost.json --terraform-plan-flags "-var-file=default.tfvars -var=subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }} -var=avx_aviatrix_customer_id=${{ secrets.AVX_CUSTOMER_ID }} -var=avx_account_email=${{ secrets.ADMIN_EMAIL }} -var=avx_controller_admin_email=${{ secrets.ADMIN_EMAIL }}"
-      env:
-        ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-        ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-        ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-        ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      run: infracost breakdown --path plan.json --format json --out-file=/tmp/infracost.json --terraform-plan-flags "-var-file=default.tfvars -var=subscription_id=${{ secrets.ARM_SUBSCRIPTION_ID }} -var=avx_aviatrix_customer_id=${{ secrets.AVX_CUSTOMER_ID }} -var=avx_account_email=${{ secrets.ADMIN_EMAIL }} -var=avx_controller_admin_email=${{ secrets.ADMIN_EMAIL }}"
 
     - name: Post the comment
       uses: infracost/actions/comment@v1
