@@ -875,6 +875,9 @@ def restore_ctrl_backup(creds, controller_ip, cid, storage, container, blob):
             time.sleep(INITIAL_SETUP_DELAY)
         else:
             output = {"return": False, "reason": str(err)}
+    except Exception as err:
+        logging.info(f"An Error has occurred: {str(err)}")
+        raise
     else:
         output = response.json()
         logging.info(output)
