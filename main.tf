@@ -417,12 +417,13 @@ resource "azurerm_app_service_plan" "controller_app_service_plan" {
   name                = var.app_service_plan_name
   resource_group_name = azurerm_resource_group.aviatrix_rg.name
   location            = azurerm_resource_group.aviatrix_rg.location
-  kind                = "elastic"
+  kind                = "linux"
   reserved            = true
 
   sku {
-    tier = "ElasticPremium"
-    size = "EP1"
+    tier     = "PremiumV2"
+    size     = "P1v2"
+    capacity = 1
   }
 }
 
@@ -471,6 +472,7 @@ resource "azurerm_function_app" "controller_app" {
     linux_fx_version = "Python|3.9"
     ftps_state       = "Disabled"
     http2_enabled    = true
+    always_on        = true
   }
   depends_on = [
     module.aviatrix_controller_initialize
