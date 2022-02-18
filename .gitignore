@@ -185,3 +185,7 @@ terraform.rc
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+# Ignore Azure Functions local settings
+
+local.settings.json
