@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import time
-
+import version
 import azure.functions as func
 import requests
 import urllib3
@@ -889,7 +889,7 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
         format="%(asctime)s aviatrix-azure-function--- %(message)s",
         level=logging.INFO
     )
-    logging.info(f"invocation_id : {context.invocation_id}")
+    logging.info(f"Version : {version.VERSION} invocation_id : {context.invocation_id}")
     req_body = req.get_json()
     headers = {"invocation_id": context.invocation_id,
                "alert_status": req_body['data']['status']}
