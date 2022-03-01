@@ -5,8 +5,8 @@ import time
 import datetime
 import requests
 import urllib3
-import version
 import azure.functions as func
+from . import version
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.network import NetworkManagementClient
@@ -311,8 +311,8 @@ def main(mytimer: func.TimerRequest) -> None:
         "vault_uri": os.environ["keyvault_uri"],
         "vault_secret": "aviatrix-controller-key",
         "func_client_id": os.environ["func_client_id"],
-        "lb_name": os.environ["lb"],
-        "rg": os.environ["rg"],
+        "lb_name": os.environ["lb_name"],
+        "rg": os.environ["resource_group_name"],
     }
 
     try:

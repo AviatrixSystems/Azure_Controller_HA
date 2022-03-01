@@ -462,6 +462,9 @@ resource "azurerm_function_app" "controller_app" {
     "storage_name"                    = azurerm_storage_account.aviatrix_controller_storage.name,
     "container_name"                  = azurerm_storage_container.aviatrix_backup_container.name,
     "scaleset_name"                   = azurerm_orchestrated_virtual_machine_scale_set.aviatrix_scale_set.name,
+    "lb_name"                         = var.load_balancer_name,
+    "resource_group_name"              = azurerm_resource_group.aviatrix_rg.name,
+    "AzureWebJobs.Backup.Disabled" = var.disable_periodic_backup,
     "SCM_DO_BUILD_DURING_DEPLOYMENT"  = "true",
     "PYTHON_ENABLE_WORKER_EXTENSIONS" = "1"
     "ENABLE_ORYX_BUILD"               = "true",

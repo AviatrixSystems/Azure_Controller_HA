@@ -226,3 +226,9 @@ variable "notification_action_group_id" {
   description = "The Azure Resource ID for an existing action group; Use this for an already created action group instead of creating new one."
   default     = ""
 }
+
+variable "disable_periodic_backup" {
+  type        = bool
+  description = "This will disable Azure-Controller-Backup function created for periodic backups"
+  default     = true
+}
