@@ -303,7 +303,7 @@ def main(mytimer: func.TimerRequest) -> None:
         format="%(asctime)s aviatrix-azure-function--- %(message)s",
         level=logging.INFO
     )
-    logging.info(f"Version : {version.VERSION} Backup triggered")
+    logging.info(f"Version : {version.VERSION} Backup triggered at {utc_timestamp}")
     
     event = {
         "aviatrix_api_version": "v1",
@@ -319,5 +319,3 @@ def main(mytimer: func.TimerRequest) -> None:
         function_handler(event)
     except Exception as err:
         logging.error(f"Error has occurred: {str(err)}")
-    else:
-        logging.info('Python timer trigger function ran at %s', utc_timestamp)
