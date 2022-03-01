@@ -119,6 +119,7 @@ function_action_group_name             = "<Name of Function Action Group>"      
 notification_action_group_name         = "<Name of Notification Action Group>"          # Optional; Creates an Action Group for notifying email with Function App results. Default = "aviatrix-notify-action-group"
 notification_action_group_id           = "<Azure Resource ID of existing Action Group>" # Optional; Uses an already created Action Group to assign to Function App notifications. Default = ""
 enable_function_app_alerts             = "<True/False>"                                 # Optional; Enable Function App Notifications for success, failure, exception. Default = false
+disable_periodic_backup                = "<True/False>"                                 # Optional; Enable Periodic backup. By default the backup is ran every hour. Default = true
 ```
 
 ### Execute
