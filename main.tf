@@ -462,8 +462,11 @@ resource "azurerm_function_app" "controller_app" {
     "storage_name"                    = azurerm_storage_account.aviatrix_controller_storage.name,
     "container_name"                  = azurerm_storage_container.aviatrix_backup_container.name,
     "scaleset_name"                   = azurerm_orchestrated_virtual_machine_scale_set.aviatrix_scale_set.name,
+    "lb_name"                         = var.load_balancer_name,
+    "resource_group_name"             = azurerm_resource_group.aviatrix_rg.name,
+    "AzureWebJobs.Backup.Disabled"    = var.disable_periodic_backup,
     "SCM_DO_BUILD_DURING_DEPLOYMENT"  = "true",
-    "PYTHON_ENABLE_WORKER_EXTENSIONS" = "1"
+    "PYTHON_ENABLE_WORKER_EXTENSIONS" = "1",
     "ENABLE_ORYX_BUILD"               = "true",
     "FUNCTIONS_WORKER_RUNTIME"        = "python",
   }
@@ -689,7 +692,25 @@ resource "time_sleep" "controller_function_provision" {
   }
 }
 
-# 13.1. Deploy Controller Function App Code
+# 13.1. Create function.json for periodic backup
+resource "local_file" "function-json" {
+  filename = "${path.module}/azure-controller/Backup/function.json"
+  content = <<-EOT
+    {
+      "scriptFile": "azure_aviatrix_backup.py",
+      "bindings": [
+        {
+          "name": "mytimer",
+          "type": "timerTrigger",
+          "direction": "in",
+          "schedule": "${var.schedule}"
+      }
+      ]
+    }
+  EOT
+}
+
+# 13.2. Deploy Controller Function App Code
 resource "null_resource" "run_controller_function" {
   depends_on = [
     time_sleep.controller_function_provision
