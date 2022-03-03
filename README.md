@@ -92,7 +92,7 @@ load_balancer_controller_backend_pool_name     = "<Name of LoadBalancer Backend 
 load_balancer_controller_health_probe_name     = "<Name of LoadBalancer Health Probe>" # Optional; Creates LoadBalancer Health Probe with this name. Default = "aviatrix-controller-probe"
 load_balancer_controller_rule_name             = "<Name of LoadBalancer Rule>"         # Optional; Creates LoadBalancer Rule with this name. Default = "aviatrix-controller-lb-rule"
 network_security_group_controller_name         = "<Name of Network Security Group>"    # Optional; Creates Network Security Group with this name. Default = "aviatrix-controller-nsg"
-aviatrix_controller_security_group_allowed_ips = [<List of Public IP's to be Allowed>] # Optional; Creates Network Security Group Rule with these allowed IP's. Default = []
+aviatrix_controller_security_group_allowed_ips = [<List of Public IP's to be Allowed>] # Required; Creates Network Security Group Rule with these allowed IP's.
 
 # Aviatrix Controller Virtual Machine Variables
 controller_virtual_machine_size           = "<Controller VM Size>"                     # Optional; Creates Scale Set with this size Virtual Machine. Default = "Standard_A4_v2"
