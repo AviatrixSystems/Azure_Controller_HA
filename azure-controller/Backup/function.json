@@ -1,0 +1,11 @@
+{
+  "scriptFile": "azure_aviatrix_backup.py",
+  "bindings": [
+    {
+      "name": "mytimer",
+      "type": "timerTrigger",
+      "direction": "in",
+      "schedule": "0 0 * * * *"
+  }
+  ]
+}
