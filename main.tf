@@ -695,7 +695,7 @@ resource "time_sleep" "controller_function_provision" {
 # 13.1. Create function.json for periodic backup
 resource "local_file" "function-json" {
   filename = "${path.module}/azure-controller/Backup/function.json"
-  content = <<-EOT
+  content  = <<-EOT
     {
       "scriptFile": "azure_aviatrix_backup.py",
       "bindings": [
