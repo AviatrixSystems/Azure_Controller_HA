@@ -15,9 +15,11 @@ from urllib3.exceptions import InsecureRequestWarning
 
 urllib3.disable_warnings(InsecureRequestWarning)
 
+
 class AviatrixException(Exception):
     def __init__(self, message="Aviatrix Error Message: ..."):
         super(AviatrixException, self).__init__(message)
+
 
 def function_handler(event):
     aviatrix_api_version = event["aviatrix_api_version"]
@@ -40,7 +42,7 @@ def function_handler(event):
 
     lb_res_client = network_client.load_balancers
     lb = LbConf(lb_res_client, rg, network_client, lb_name)
-    hostname = lb.lb_public_ip_prefix  
+    hostname = lb.lb_public_ip_prefix
     api_endpoint_url = (
         f"https://{hostname}/{aviatrix_api_version}/{aviatrix_api_route}"
     )
@@ -52,22 +54,21 @@ def function_handler(event):
         password=retrieved_secret.value,
         hide_password=True,
     )
-    
+
     verify_aviatrix_api_response_login(response=response)
     CID = response.json()["CID"]
     logging.info(
         "END: Login Aviatrix Controller as admin")
 
-    logging.info(
-    "START: Starting Backup")
+    logging.info("START: Starting Backup")
     try:
         enable_backup(
-        api_endpoint_url=api_endpoint_url,
-        CID=CID)
+            api_endpoint_url=api_endpoint_url,
+            CID=CID)
     except Exception as err:
         logging.warning(str(err))
-        logging.info(
-        "END: Starting Backup")
+        logging.info("END: Starting Backup")
+
 
 def verify_aviatrix_api_response_login(response=None):
     # if successfully login
@@ -244,6 +245,7 @@ class LbConf():
             self.network_client.load_balancer_backend_address_pools.get(
                 self.resource_group, self.lb_name, self.lb_be_name))
 
+
 def enable_backup(
     api_endpoint_url="123.123.123.123/v1/api",
     CID="ABCD1234",
@@ -254,7 +256,8 @@ def enable_backup(
     logging.info(f"Request method is : {request_method}")
     payload_with_hidden_password = dict(data)
     payload_with_hidden_password["CID"] = "********"
-    logging.info(f"Request method is : {str(json.dumps(obj=payload_with_hidden_password, indent=4))}")    
+    formatted_payload = json.dumps(obj=payload_with_hidden_password, indent=4)
+    logging.info(f"Request method is : {str(formatted_payload)}")
     response = send_aviatrix_api(
         api_endpoint_url=api_endpoint_url,
         request_method=request_method,
@@ -263,7 +266,8 @@ def enable_backup(
 
     py_dict = response.json()
     logging.info("Aviatrix API response is: %s", str(py_dict))
-    if (py_dict["return"] == True) and (py_dict["results"]["enabled"] == "yes"):
+    if (py_dict["return"] is True) and (
+            py_dict["results"]["enabled"] == "yes"):
         config = {}
         config["account_name"] = py_dict["results"]["acct_name"]
         config["storage_name"] = py_dict["results"]["storage_name"]
@@ -279,8 +283,9 @@ def enable_backup(
             payload_with_hidden_password = dict(data)
             payload_with_hidden_password["CID"] = "********"
             logging.info(f"API endpoint url is : {api_endpoint_url}")
-    
-            logging.info(f"Request method is : {str(json.dumps(obj=payload_with_hidden_password, indent=4))}")
+            formatted_payload = json.dumps(obj=payload_with_hidden_password,
+                                           indent=4)
+            logging.info(f"Request method is : {str(formatted_payload)}")
 
             response = send_aviatrix_api(
                 api_endpoint_url=api_endpoint_url,
@@ -288,13 +293,14 @@ def enable_backup(
                 payload=data,
             )
             py_dict = response.json()
-            logging.info("Aviatrix API response is: %s", str(py_dict))        
+            logging.info("Aviatrix API response is: %s", str(py_dict))
         except Exception as e:
             logging.info(e)
     else:
         output = {"return": False, "reason": "Backup is not enabled"}
         logging.warning(output)
         return output
+
 
 def main(mytimer: func.TimerRequest) -> None:
     utc_timestamp = datetime.datetime.utcnow().replace(
@@ -303,8 +309,8 @@ def main(mytimer: func.TimerRequest) -> None:
         format="%(asctime)s aviatrix-azure-function--- %(message)s",
         level=logging.INFO
     )
-    logging.info(f"Version : {version.VERSION} Backup triggered at {utc_timestamp}")
-    
+    logging.info(
+        f"Version : {version.VERSION} Backup triggered at {utc_timestamp}")
     event = {
         "aviatrix_api_version": "v1",
         "aviatrix_api_route": "api",
