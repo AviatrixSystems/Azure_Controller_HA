@@ -92,7 +92,7 @@ load_balancer_controller_backend_pool_name     = "<Name of LoadBalancer Backend 
 load_balancer_controller_health_probe_name     = "<Name of LoadBalancer Health Probe>" # Optional; Creates LoadBalancer Health Probe with this name. Default = "aviatrix-controller-probe"
 load_balancer_controller_rule_name             = "<Name of LoadBalancer Rule>"         # Optional; Creates LoadBalancer Rule with this name. Default = "aviatrix-controller-lb-rule"
 network_security_group_controller_name         = "<Name of Network Security Group>"    # Optional; Creates Network Security Group with this name. Default = "aviatrix-controller-nsg"
-aviatrix_controller_security_group_allowed_ips = [<List of Public IP's to be Allowed>] # Optional; Creates Network Security Group Rule with these allowed IP's. Default = []
+aviatrix_controller_security_group_allowed_ips = [<List of Public IP's to be Allowed>] # Required; Creates Network Security Group Rule with these allowed IP's.
 
 # Aviatrix Controller Virtual Machine Variables
 controller_virtual_machine_size           = "<Controller VM Size>"                     # Optional; Creates Scale Set with this size Virtual Machine. Default = "Standard_A4_v2"
@@ -119,6 +119,8 @@ function_action_group_name             = "<Name of Function Action Group>"      
 notification_action_group_name         = "<Name of Notification Action Group>"          # Optional; Creates an Action Group for notifying email with Function App results. Default = "aviatrix-notify-action-group"
 notification_action_group_id           = "<Azure Resource ID of existing Action Group>" # Optional; Uses an already created Action Group to assign to Function App notifications. Default = ""
 enable_function_app_alerts             = "<True/False>"                                 # Optional; Enable Function App Notifications for success, failure, exception. Default = false
+disable_periodic_backup                = "<True/False>"                                 # Optional; Enable Periodic backup function. Default = true
+schedule                               = "<Cron Timer>"                                 # Optional; Creates a backup every hour by defualt when disable_periodic_backup is set to false. Default = "0 0 * * * *"
 ```
 
 ### Execute
@@ -137,6 +139,8 @@ Additional Information:
 2. Makes sure to enable the backup on the healthy controller prior to triggering the failover.
 
 3. Failover logs can be viewed in function monitor logs.
+
+4. Cron Timer [examples](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=csharp#ncrontab-examples)
 
 Note:
 

@@ -2,10 +2,10 @@ import json
 import logging
 import os
 import time
-
 import azure.functions as func
 import requests
 import urllib3
+from . import version
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
 from azure.mgmt.compute import ComputeManagementClient
@@ -889,7 +889,8 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
         format="%(asctime)s aviatrix-azure-function--- %(message)s",
         level=logging.INFO
     )
-    logging.info(f"invocation_id : {context.invocation_id}")
+    logging.info(
+        f"Version : {version.VERSION} invocation_id : {context.invocation_id}")
     req_body = req.get_json()
     headers = {"invocation_id": context.invocation_id,
                "alert_status": req_body['data']['status']}
@@ -909,8 +910,8 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
         "func_client_id": os.environ["func_client_id"],
         "storage_name": os.environ["storage_name"],
         "container_name": os.environ["container_name"],
-        "lb_name": req_body['data']['context']['resourceName'],
-        "rg": req_body['data']['context']['resourceGroupName']
+        "lb_name": os.environ["lb_name"],
+        "rg": os.environ["resource_group_name"]
     }
 
     try:

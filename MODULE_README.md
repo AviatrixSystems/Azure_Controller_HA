@@ -11,6 +11,7 @@
 | Name | Version |
 |------|---------|
 | <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | >= 2.0 |
+| <a name="provider_local"></a> [local](#provider\_local) | n/a |
 | <a name="provider_null"></a> [null](#provider\_null) | n/a |
 | <a name="provider_random"></a> [random](#provider\_random) | n/a |
 | <a name="provider_time"></a> [time](#provider\_time) | n/a |
@@ -59,6 +60,7 @@
 | [azurerm_subnet.aviatrix_controller_subnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet) | resource |
 | [azurerm_user_assigned_identity.aviatrix_identity](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/user_assigned_identity) | resource |
 | [azurerm_virtual_network.aviatrix_vnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network) | resource |
+| [local_file.function-json](https://registry.terraform.io/providers/hashicorp/local/latest/docs/resources/file) | resource |
 | [null_resource.run_controller_function](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [random_id.aviatrix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/id) | resource |
 | [random_password.generate_controller_secret](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/password) | resource |
@@ -75,7 +77,7 @@
 |------|-------------|------|---------|:--------:|
 | <a name="input_app_service_plan_name"></a> [app\_service\_plan\_name](#input\_app\_service\_plan\_name) | The name of the app service plan to be deployed. | `string` | `"aviatrix-function-app-sp"` | no |
 | <a name="input_application_insights_name"></a> [application\_insights\_name](#input\_application\_insights\_name) | The name of the application insights to be deployed for the function app. | `string` | `"aviatrix-function-app-insights"` | no |
-| <a name="input_aviatrix_controller_security_group_allowed_ips"></a> [aviatrix\_controller\_security\_group\_allowed\_ips](#input\_aviatrix\_controller\_security\_group\_allowed\_ips) | Incoming cidr for security group used by controller | `list(string)` | `[]` | no |
+| <a name="input_aviatrix_controller_security_group_allowed_ips"></a> [aviatrix\_controller\_security\_group\_allowed\_ips](#input\_aviatrix\_controller\_security\_group\_allowed\_ips) | Incoming cidr for security group used by controller | `list(string)` | n/a | yes |
 | <a name="input_aviatrix_function_app_custom_role_name"></a> [aviatrix\_function\_app\_custom\_role\_name](#input\_aviatrix\_function\_app\_custom\_role\_name) | The name of the custom role to be created for the Aviatrix Function App to modify resources within the resource group. | `string` | `"aviatrix-function-custom-role"` | no |
 | <a name="input_avx_access_account_name"></a> [avx\_access\_account\_name](#input\_avx\_access\_account\_name) | aviatrix controller access account name | `string` | n/a | yes |
 | <a name="input_avx_account_email"></a> [avx\_account\_email](#input\_avx\_account\_email) | aviatrix controller access account email | `string` | n/a | yes |
@@ -88,6 +90,7 @@
 | <a name="input_controller_virtual_machine_admin_username"></a> [controller\_virtual\_machine\_admin\_username](#input\_controller\_virtual\_machine\_admin\_username) | Admin Username for the controller virtual machine. | `string` | `"aviatrix"` | no |
 | <a name="input_controller_virtual_machine_size"></a> [controller\_virtual\_machine\_size](#input\_controller\_virtual\_machine\_size) | Virtual Machine size for the controller. | `string` | `"Standard_A4_v2"` | no |
 | <a name="input_create_custom_role"></a> [create\_custom\_role](#input\_create\_custom\_role) | Enable creation of custom role instead of using contributor permissions | `bool` | `false` | no |
+| <a name="input_disable_periodic_backup"></a> [disable\_periodic\_backup](#input\_disable\_periodic\_backup) | This will disable Azure-Controller-Backup function created for periodic backups | `bool` | `true` | no |
 | <a name="input_enable_function_app_alerts"></a> [enable\_function\_app\_alerts](#input\_enable\_function\_app\_alerts) | This will create the following Azure Monitor Alerts for the Function App; function triggered, function success, function failure, function exception. | `bool` | `false` | no |
 | <a name="input_function_action_group_name"></a> [function\_action\_group\_name](#input\_function\_action\_group\_name) | The name of the action group created for alerting on the controller function app. (Triggers Function) | `string` | `"aviatrix-function-action-group"` | no |
 | <a name="input_function_app_name"></a> [function\_app\_name](#input\_function\_app\_name) | The name of the function app to be deployed. | `string` | `""` | no |
@@ -104,6 +107,7 @@
 | <a name="input_notification_action_group_name"></a> [notification\_action\_group\_name](#input\_notification\_action\_group\_name) | The name of the action group created for alerting notifications on the controller function app. (Email Only) | `string` | `"aviatrix-notify-action-group"` | no |
 | <a name="input_resource_group_name"></a> [resource\_group\_name](#input\_resource\_group\_name) | The name of the resource group to be created. | `string` | n/a | yes |
 | <a name="input_scale_set_controller_name"></a> [scale\_set\_controller\_name](#input\_scale\_set\_controller\_name) | The Name of the Scale Set used for the Aviatrix Controller. | `string` | `"aviatrix-controller-scale-set"` | no |
+| <a name="input_schedule"></a> [schedule](#input\_schedule) | The cron timer syntax for periodic backup. | `string` | `"0 0 * * * *"` | no |
 | <a name="input_storage_account_name"></a> [storage\_account\_name](#input\_storage\_account\_name) | The name of the storage account for the controller. | `string` | `""` | no |
 | <a name="input_subnet_cidr"></a> [subnet\_cidr](#input\_subnet\_cidr) | Subnet Address Space used for Aviatrix Devices | `string` | `"10.0.0.0/24"` | no |
 | <a name="input_subnet_name"></a> [subnet\_name](#input\_subnet\_name) | The name of the subnet used for Aviatrix Devices. | `string` | `"aviatrix-subnet"` | no |

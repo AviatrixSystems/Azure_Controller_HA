@@ -106,7 +106,6 @@ variable "network_security_group_controller_name" {
 variable "aviatrix_controller_security_group_allowed_ips" {
   type        = list(string)
   description = "Incoming cidr for security group used by controller"
-  default     = []
 }
 
 variable "controller_virtual_machine_size" {
@@ -225,4 +224,16 @@ variable "notification_action_group_id" {
   type        = string
   description = "The Azure Resource ID for an existing action group; Use this for an already created action group instead of creating new one."
   default     = ""
+}
+
+variable "disable_periodic_backup" {
+  type        = bool
+  description = "This will disable Azure-Controller-Backup function created for periodic backups"
+  default     = true
+}
+
+variable "schedule" {
+  type        = string
+  description = "The cron timer syntax for periodic backup."
+  default     = "0 0 * * * *"
 }
