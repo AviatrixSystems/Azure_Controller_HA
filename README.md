@@ -142,6 +142,11 @@ Additional Information:
 
 4. Cron Timer [examples](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=csharp#ncrontab-examples)
 
+Known Caveat :
+
+1. Function Timeout error can occur during the restore process. In case of this error please login to the new controller to validate if the backup has been restored successfully. 
+![ScreenShot](./Restore-error.png)
+
 Note:
 
 Alert will not be triggered when instance is deleted or stopped manually. It will only be triggered when loadbalancer health checks are failed.
