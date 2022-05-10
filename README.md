@@ -147,7 +147,9 @@ Known Caveat :
 1. Function Timeout error can occur during the restore process. In case of this error please login to the new controller to validate if the backup has been restored successfully. 
 ![ScreenShot](./Restore-error.png)
 
+2. Failover may or may not be triggered when instance is stopped manually. This inconsistent behaviour was due to an unpredictable outcome of Azure LB health probes.
+
 Note:
 
-Alert will not be triggered when instance is deleted or stopped manually. It will only be triggered when loadbalancer health checks are failed.
+Alert will not be triggered when instance is deleted. It will only be triggered when loadbalancer health checks are failed.
 To test the failover, insert a deny rule on controller SG by blocking https traffic from Azure load balancer(sevice tag).
