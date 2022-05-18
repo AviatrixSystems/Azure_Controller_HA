@@ -1,0 +1,22 @@
+# References
+# * https://semgrep.dev/p/r2c-security-audit
+# * https://semgrep.dev/docs/semgrep-ci/sample-ci-configs/
+# * https://semgrep.dev/s/L8xn: s/WOqz checks for nosemgrep usage, asks for justification. 
+name: Semgrep
+on:
+  pull_request:
+jobs:
+  semgrep:
+    name: Static Analysis Scan
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout project source
+      - uses: actions/checkout@v2
+      # Scan code using project's configuration on https://semgrep.dev/manage
+      - uses: returntocorp/semgrep-action@v1
+        with:
+           config: >- # more at semgrep.dev/explore
+            s/WOqz
+            p/secrets
+            p/r2c-security-audit
+            p/r2c-ci
