@@ -1,4 +1,4 @@
-# Launch an Aviatrix Controller in Azure with High Availbility
+# Launch an Aviatrix Controller in Azure with High Availability
 
 ## Description
 
