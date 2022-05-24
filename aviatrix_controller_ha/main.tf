@@ -697,6 +697,6 @@ resource "null_resource" "run_controller_function" {
     time_sleep.controller_function_provision
   ]
   provisioner "local-exec" {
-    command = "cd ${path.module}/azure-controller && func azure functionapp publish ${azurerm_function_app.controller_app.name} --build remote"
+    command = "cd ${path.module}/azure-controller && func azure functionapp publish ${azurerm_function_app.controller_app.name} --build remote --python"
   }
 }

@@ -31,9 +31,9 @@ The module `aviatrix_controller_arm` does not currently support `azuread` versio
 
 Module  | Description |
 | ------- | ----------- |
-|[aviatrix_controller_arm](https://github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure) |Creates Azure Active Directory Application and Service Principal for Aviatrix access account setup |
-|[aviatrix_controller_build](modules/aviatrix_controller_build) |Builds the Aviatrix Controller VM on Azure |
-|[aviatrix_controller_initialize](https://github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize) | Initializes the Aviatrix Controller (setting admin email, setting admin password, upgrading controller version, and setting up access account) |
+|[aviatrix_controller_arm](github.com/AviatrixSystems/terraform-aviatrix-azure-controller.git//modules/aviatrix_controller_azure?ref=master) |Creates Azure Active Directory Application and Service Principal for Aviatrix access account setup |
+|[aviatrix_controller_ha](aviatrix_controller_ha/) |Builds the Aviatrix Controller VM on Azure with HA |
+|[aviatrix_controller_initialize](github.com/AviatrixSystems/terraform-aviatrix-azure-controller.git//modules/aviatrix_controller_initialize?ref=master) | Initializes the Aviatrix Controller (setting admin email, setting admin password, upgrading controller version, and setting up access account) |
 
 ## Procedures for Building and Initializing a Controller in Azure
 
@@ -88,7 +88,7 @@ terraform {
 }
 
 module "aviatrix_controller_azure" {
-    source                                         = "AviatrixSystems/Azure_Controller_HA//modules/aviatrix_controller_build"
+    source                                         = "github.com/AviatrixSystems/Azure_Controller_HA.git//aviatrix_controller_ha?ref=main"
     subscription_id                                = "<Subscription ID>"                   # Required; Subscription ID where resources are deployed.
     to_be_created_service_principal_name           = "<Name of Service Principal>"         # Optional; The name of the App Registration/Service Principal to be created.
     create_custom_role                             = true/false                            # Optional; Creates the App Registration/Service Principal with specific roles instead of 'Contributor' Permissions. Default = false
