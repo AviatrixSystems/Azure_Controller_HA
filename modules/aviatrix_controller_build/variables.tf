@@ -226,14 +226,3 @@ variable "notification_action_group_id" {
   default     = ""
 }
 
-variable "disable_periodic_backup" {
-  type        = bool
-  description = "This will disable Azure-Controller-Backup function created for periodic backups"
-  default     = true
-}
-
-variable "schedule" {
-  type        = string
-  description = "The cron timer syntax for periodic backup."
-  default     = "0 0 * * * *"
-}

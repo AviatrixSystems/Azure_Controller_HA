@@ -90,7 +90,6 @@
 | <a name="input_controller_virtual_machine_admin_username"></a> [controller\_virtual\_machine\_admin\_username](#input\_controller\_virtual\_machine\_admin\_username) | Admin Username for the controller virtual machine. | `string` | `"aviatrix"` | no |
 | <a name="input_controller_virtual_machine_size"></a> [controller\_virtual\_machine\_size](#input\_controller\_virtual\_machine\_size) | Virtual Machine size for the controller. | `string` | `"Standard_A4_v2"` | no |
 | <a name="input_create_custom_role"></a> [create\_custom\_role](#input\_create\_custom\_role) | Enable creation of custom role instead of using contributor permissions | `bool` | `false` | no |
-| <a name="input_disable_periodic_backup"></a> [disable\_periodic\_backup](#input\_disable\_periodic\_backup) | This will disable Azure-Controller-Backup function created for periodic backups | `bool` | `true` | no |
 | <a name="input_enable_function_app_alerts"></a> [enable\_function\_app\_alerts](#input\_enable\_function\_app\_alerts) | This will create the following Azure Monitor Alerts for the Function App; function triggered, function success, function failure, function exception. | `bool` | `false` | no |
 | <a name="input_function_action_group_name"></a> [function\_action\_group\_name](#input\_function\_action\_group\_name) | The name of the action group created for alerting on the controller function app. (Triggers Function) | `string` | `"aviatrix-function-action-group"` | no |
 | <a name="input_function_app_name"></a> [function\_app\_name](#input\_function\_app\_name) | The name of the function app to be deployed. | `string` | `""` | no |
@@ -107,7 +106,6 @@
 | <a name="input_notification_action_group_name"></a> [notification\_action\_group\_name](#input\_notification\_action\_group\_name) | The name of the action group created for alerting notifications on the controller function app. (Email Only) | `string` | `"aviatrix-notify-action-group"` | no |
 | <a name="input_resource_group_name"></a> [resource\_group\_name](#input\_resource\_group\_name) | The name of the resource group to be created. | `string` | n/a | yes |
 | <a name="input_scale_set_controller_name"></a> [scale\_set\_controller\_name](#input\_scale\_set\_controller\_name) | The Name of the Scale Set used for the Aviatrix Controller. | `string` | `"aviatrix-controller-scale-set"` | no |
-| <a name="input_schedule"></a> [schedule](#input\_schedule) | The cron timer syntax for periodic backup. | `string` | `"0 0 * * * *"` | no |
 | <a name="input_storage_account_name"></a> [storage\_account\_name](#input\_storage\_account\_name) | The name of the storage account for the controller. | `string` | `""` | no |
 | <a name="input_subnet_cidr"></a> [subnet\_cidr](#input\_subnet\_cidr) | Subnet Address Space used for Aviatrix Devices | `string` | `"10.0.0.0/24"` | no |
 | <a name="input_subnet_name"></a> [subnet\_name](#input\_subnet\_name) | The name of the subnet used for Aviatrix Devices. | `string` | `"aviatrix-subnet"` | no |
