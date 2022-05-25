@@ -19,6 +19,7 @@ module "aviatrix_controller_azure" {
   create_custom_role                             = var.create_custom_role
   resource_group_name                            = var.resource_group_name # Required
   location                                       = var.location            # Required
+  az_support                                     = var.az_support          # Required
   storage_account_name                           = var.storage_account_name
   key_vault_name                                 = var.key_vault_name
   virtual_network_name                           = var.virtual_network_name

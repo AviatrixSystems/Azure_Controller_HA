@@ -226,3 +226,7 @@ variable "notification_action_group_id" {
   default     = ""
 }
 
+variable "az_support" {
+  type        = bool
+  description = "Set to true if the Azure region supports AZ's"
+}

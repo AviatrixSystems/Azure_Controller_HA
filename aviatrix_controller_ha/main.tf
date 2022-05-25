@@ -130,6 +130,7 @@ resource "azurerm_public_ip" "aviatrix_lb_public_ip" {
   location            = azurerm_resource_group.aviatrix_rg.location
   allocation_method   = "Static"
   sku                 = "Standard"
+  availability_zone   = var.az_support ? "Zone-Redundant" : "No-Zone"
 }
 
 # 6.1. Create load balancer

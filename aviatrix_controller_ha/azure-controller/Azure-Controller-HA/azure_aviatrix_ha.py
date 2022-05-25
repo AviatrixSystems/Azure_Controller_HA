@@ -865,7 +865,12 @@ def restore_ctrl_backup(creds, controller_ip, cid, storage, container, blob):
         f"{str(json.dumps(obj=payload_with_hidden_password, indent=4))}\n")
 
     try:
-        response = requests.post(base_url, data=post_data, verify=False)
+        response = requests.post(
+            base_url, data=post_data, timeout=120, verify=False)
+    except requests.Timeout:
+        logging.info("Restoring backup timed out. "
+                     "Please check the controller for updated config.")
+        pass
     except requests.exceptions.ConnectionError as err:
         if "Remote end closed connection without response" in str(err):
             logging.info("Server closed the connection while executing "
