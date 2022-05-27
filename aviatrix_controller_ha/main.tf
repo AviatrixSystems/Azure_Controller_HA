@@ -328,7 +328,7 @@ module "aviatrix_controller_initialize" {
 
 # 10.0. Create Custom Role Definition for Function App
 resource "azurerm_role_definition" "aviatrix_function_role" {
-  name        = var.aviatrix_function_app_custom_role_name
+  name        = format("%s-%s", var.aviatrix_function_app_custom_role_name, "${random_id.aviatrix.hex}")
   scope       = azurerm_resource_group.aviatrix_rg.id
   description = "Custom role for Aviatrix Controller Function App. Created via Terraform"
 

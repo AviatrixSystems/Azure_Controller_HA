@@ -37,7 +37,21 @@ Module  | Description |
 
 ## Procedures for Building and Initializing a Controller in Azure
 
-### 1. Create the Python virtual environment and install required dependencies
+### 1. Install Azure CLI
+
+On Windows:
+``` shell
+$ProgressPreference = 'SilentlyContinue';
+Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile .\AzureCLI.msi; Start-Process msiexec.exe -Wait -ArgumentList '/I AzureCLI.msi /quiet';
+rm .\AzureCLI.msi
+```
+
+On Mac:
+``` shell
+brew update && brew install azure-cli
+```
+
+### 2. Create the Python virtual environment and install required dependencies
 
 Create the virtual environment.
 
@@ -57,12 +71,14 @@ Install required dependencies.
 pip install -r requirements.txt
 ```
 
-### 2. Authenticating to Azure
+### 3. Authenticating to Azure
 
-Please refer to the documentation for
-the [azurerm](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs)
-and [azuread](https://registry.terraform.io/providers/hashicorp/azuread/latest/docs) Terraform providers to decide how
-to authenticate to Azure.
+Login to the Azure CLI using:
+
+```shell
+az login
+````
+*Note: Please refer to the [documentation](https://registry.terraform.io/providers/hashicorp/azuread/latest/docs#authenticating-to-azure-active-directory) for different methods of authentication to Azure, incase above command is not applicable.*
 
 Pick the subscription you want and use it in the command below.
 
@@ -136,7 +152,7 @@ module "aviatrix_controller_azure" {
 
 ```shell
 terraform init
-terraform apply --var-file=<terrraform.tfvars>
+terraform apply --var-file=<terraform.tfvars>
 ````
 
 Additional Information:
@@ -145,11 +161,9 @@ Additional Information:
     - ~5 min for azure alert to get fired as controller unhealthy.
     - ~15 min to deploy, initialize, restore the new controller.
 
-2. Makes sure to enable the backup on the healthy controller prior to triggering the failover.
+2. Make sure to enable the backup on the healthy controller prior to triggering the failover.
 
 3. Failover logs can be viewed in function monitor logs.
-
-4. Cron Timer [examples](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=csharp#ncrontab-examples)
 
 Known Caveat :
 
