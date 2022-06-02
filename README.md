@@ -13,8 +13,7 @@ This Terraform module:
 ## Prerequisites
 
 1. [Terraform v0.13+](https://www.terraform.io/downloads.html) - execute terraform files
-2. [Python3](https://www.python.org/downloads/) - execute `accept_license.py` and `aviatrix_controller_init.py` python
-   scripts
+2. [Python3](https://www.python.org/downloads/)
 3. [Azure Functions Core Tools](https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=v4%2Cwindows%2Ccsharp%2Cportal%2Cbash)
 
 ## Providers
@@ -31,9 +30,9 @@ The module `aviatrix_controller_arm` does not currently support `azuread` versio
 
 Module  | Description |
 | ------- | ----------- |
-|[aviatrix_controller_arm](github.com/AviatrixSystems/terraform-aviatrix-azure-controller.git//modules/aviatrix_controller_azure?ref=master) |Creates Azure Active Directory Application and Service Principal for Aviatrix access account setup |
+|[aviatrix_controller_arm](https://github.com/AviatrixSystems/terraform-aviatrix-azure-controller/tree/master/modules/aviatrix_controller_azure) |Creates Azure Active Directory Application and Service Principal for Aviatrix access account setup |
 |[aviatrix_controller_ha](aviatrix_controller_ha/) |Builds the Aviatrix Controller VM on Azure with HA |
-|[aviatrix_controller_initialize](github.com/AviatrixSystems/terraform-aviatrix-azure-controller.git//modules/aviatrix_controller_initialize?ref=master) | Initializes the Aviatrix Controller (setting admin email, setting admin password, upgrading controller version, and setting up access account) |
+|[aviatrix_controller_initialize](https://github.com/AviatrixSystems/terraform-aviatrix-azure-controller/tree/master/modules/aviatrix_controller_initialize) | Initializes the Aviatrix Controller (setting admin email, setting admin password, upgrading controller version, and setting up access account) |
 
 ## Procedures for Building and Initializing a Controller in Azure
 
