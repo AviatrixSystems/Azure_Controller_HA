@@ -169,7 +169,7 @@ Known Caveat :
 1. Function Timeout error can occur during the restore process. In case of this error please login to the new controller to validate if the backup has been restored successfully. 
 ![ScreenShot](./Restore-error.png)
 
-2. Failover may or may not be triggered when instance is stopped manually. This inconsistent behaviour was due to an unpredictable outcome of Azure LB health probes.
+2. Failover may or may not be triggered when instance is stopped manually. As per azure, this inconsistent behavior is technically by design when manual auto scale feature is used in azure virtual machine scale set.
 
 Note:
 
