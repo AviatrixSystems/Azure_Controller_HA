@@ -29,6 +29,16 @@ resource "random_password" "generate_controller_secret" {
   override_special = "_%@"
 }
 
+resource "random_password" "generate_controller_cli_secret" {
+  count            = var.controller_virtual_machine_admin_password == "" ? 1 : 0
+  length           = 24
+  min_upper        = 2
+  min_numeric      = 2
+  min_special      = 2
+  special          = true
+  override_special = "_%@"
+}
+
 data "azurerm_client_config" "current" {}
 
 # 1.0. Create Custom Service Principal for Aviatrix Controller
@@ -105,6 +115,17 @@ resource "azurerm_key_vault_secret" "controller_key_secret" {
   value        = var.avx_controller_admin_password == "" ? random_password.generate_controller_secret[0].result : var.avx_controller_admin_password
   key_vault_id = azurerm_key_vault.aviatrix_key_vault.id
   content_type = "Aviatrix Controller Admin Password"
+}
+
+# 4.4. Add Controller Virtual Machine CLI Password to Key Vault
+resource "azurerm_key_vault_secret" "controller_vm_cli_key_secret" {
+  depends_on = [
+    azurerm_role_assignment.key_vault_pipeline_service_principal
+  ]
+  name         = "aviatrix-controller-vm-cli-key"
+  value        = var.controller_virtual_machine_admin_password == "" ? random_password.generate_controller_cli_secret[0].result : var.controller_virtual_machine_admin_password
+  key_vault_id = azurerm_key_vault.aviatrix_key_vault.id
+  content_type = "Aviatrix Controller VM CLI Admin Password"
 }
 
 # 5.0. Create Virtual Network
@@ -255,7 +276,7 @@ resource "azurerm_orchestrated_virtual_machine_scale_set" "aviatrix_scale_set" {
       computer_name_prefix            = "aviatrix-"
       disable_password_authentication = var.controller_public_ssh_key == "" ? false : true
       admin_username                  = var.controller_virtual_machine_admin_username
-      admin_password                  = length(var.controller_public_ssh_key) > 0 ? null : var.controller_virtual_machine_admin_password == "" ? random_password.generate_controller_secret[0].result : var.controller_virtual_machine_admin_password
+      admin_password                  = length(var.controller_public_ssh_key) > 0 ? null : var.controller_virtual_machine_admin_password == "" ? random_password.generate_controller_cli_secret[0].result : var.controller_virtual_machine_admin_password
       provision_vm_agent              = true
       dynamic "admin_ssh_key" {
         for_each = var.controller_public_ssh_key == "" ? [] : [true]
@@ -418,13 +439,12 @@ resource "azurerm_app_service_plan" "controller_app_service_plan" {
   name                = var.app_service_plan_name
   resource_group_name = azurerm_resource_group.aviatrix_rg.name
   location            = azurerm_resource_group.aviatrix_rg.location
-  kind                = "linux"
+  kind                = "elastic"
   reserved            = true
 
   sku {
-    tier     = "PremiumV2"
-    size     = "P1v2"
-    capacity = 1
+    tier = "ElasticPremium"
+    size = "EP1"
   }
 }
 
@@ -440,10 +460,6 @@ resource "azurerm_function_app" "controller_app" {
   version                    = "~4"
   https_only                 = true
 
-  auth_settings {
-    enabled                       = true
-    unauthenticated_client_action = "AllowAnonymous"
-  }
   identity {
     type = "UserAssigned"
     identity_ids = [
@@ -465,6 +481,7 @@ resource "azurerm_function_app" "controller_app" {
     "scaleset_name"                   = azurerm_orchestrated_virtual_machine_scale_set.aviatrix_scale_set.name,
     "lb_name"                         = var.load_balancer_name,
     "resource_group_name"             = azurerm_resource_group.aviatrix_rg.name,
+    "AzureWebJobs.Backup.Disabled"    = var.disable_periodic_backup,
     "SCM_DO_BUILD_DURING_DEPLOYMENT"  = "true",
     "PYTHON_ENABLE_WORKER_EXTENSIONS" = "1",
     "ENABLE_ORYX_BUILD"               = "true",
@@ -472,11 +489,12 @@ resource "azurerm_function_app" "controller_app" {
   }
 
   site_config {
-    linux_fx_version = "Python|3.9"
-    ftps_state       = "Disabled"
-    http2_enabled    = true
-    always_on        = true
+    linux_fx_version          = "Python|3.9"
+    ftps_state                = "Disabled"
+    http2_enabled             = true
+    use_32_bit_worker_process = false
   }
+
   depends_on = [
     module.aviatrix_controller_initialize
   ]
@@ -692,7 +710,25 @@ resource "time_sleep" "controller_function_provision" {
   }
 }
 
-# 13.1. Deploy Controller Function App Code
+# 13.1. Create function.json for periodic backup
+resource "local_file" "function-json" {
+  filename = "${path.module}/azure-controller/Backup/function.json"
+  content  = <<-EOT
+    {
+      "scriptFile": "azure_aviatrix_backup.py",
+      "bindings": [
+        {
+          "name": "mytimer",
+          "type": "timerTrigger",
+          "direction": "in",
+          "schedule": "${var.schedule}"
+      }
+      ]
+    }
+  EOT
+}
+
+# 13.2. Deploy Controller Function App Code
 resource "null_resource" "run_controller_function" {
   depends_on = [
     time_sleep.controller_function_provision

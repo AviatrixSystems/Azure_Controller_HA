@@ -7,8 +7,9 @@ This Terraform module:
 - Creates an Aviatrix Controller in Azure using scale set and load balancer.
 - Creates an access account on the controller.
 - Creates storage and container required for backup/function logs.
+- Creates a KeyVault to safeguard secrets. 
 - Creates an Alert to check the loadbalancer health probes.
-- Creates an azure funtion to manage failover event.
+- Creates an azure funtion to manage failover event along with periodic backup if needed.
 
 ## Prerequisites
 
@@ -144,6 +145,8 @@ module "aviatrix_controller_azure" {
     notification_action_group_id           = "<Azure Resource ID of existing Action Group>" # Optional; Uses an already created Action Group to assign to Function App notifications. Default = ""
     enable_function_app_alerts             = "<True/False>"                                 # Optional; Enable Function App Notifications for success, failure, exception. Default = false
     az_support                             = "<True/False>"                                 # Required; Set to true if the Azure region supports AZ's.
+    disable_periodic_backup                = "<True/False>"                                 # Optional; Enable Periodic backup function. Default = true
+    schedule                               = "<Cron Timer>"                                 # Optional; Creates a backup every hour by default when disable_periodic_backup is set to false. Default = "0 0 * * * *"
 }
 ```
 
@@ -163,6 +166,8 @@ Additional Information:
 2. Make sure to enable the backup on the healthy controller prior to triggering the failover.
 
 3. Failover logs can be viewed in function monitor logs.
+
+4. Cron Timer [examples](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=csharp#ncrontab-examples)
 
 Known Caveat :
 

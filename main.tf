@@ -53,4 +53,6 @@ module "aviatrix_controller_azure" {
   function_action_group_name                     = var.function_action_group_name
   notification_action_group_name                 = var.notification_action_group_name
   notification_action_group_id                   = var.notification_action_group_id
+  disable_periodic_backup                        = var.disable_periodic_backup
+  schedule                                       = var.schedule
 }
