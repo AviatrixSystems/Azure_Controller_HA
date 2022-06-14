@@ -661,7 +661,7 @@ resource "azurerm_monitor_metric_alert" "function_app_failed_alert" {
     dimension {
       name     = "request/resultCode"
       operator = "Exclude"
-      values   = ["200", "501"]
+      values   = ["0", "200", "501"]
     }
   }
 }
