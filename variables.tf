@@ -230,3 +230,15 @@ variable "az_support" {
   type        = bool
   description = "Set to true if the Azure region supports AZ's"
 }
+
+variable "disable_periodic_backup" {
+  type        = bool
+  description = "This will disable Azure-Controller-Backup function created for periodic backups"
+  default     = true
+}
+
+variable "schedule" {
+  type        = string
+  description = "The cron timer syntax for periodic backup."
+  default     = "0 0 * * * *"
+}
