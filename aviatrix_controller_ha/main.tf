@@ -460,11 +460,6 @@ resource "azurerm_function_app" "controller_app" {
   version                    = "~4"
   https_only                 = true
 
-  auth_settings {
-    enabled                       = true
-    unauthenticated_client_action = "AllowAnonymous"
-  }
-
   identity {
     type = "UserAssigned"
     identity_ids = [
