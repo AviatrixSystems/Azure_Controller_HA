@@ -4,6 +4,7 @@
 
 This Terraform module:
 
+- Supports Azure controller deployment with only 6.5 and above versions.
 - Creates an Aviatrix Controller in Azure using scale set and load balancer.
 - Creates an access account on the controller.
 - Creates storage account and container required for backup/function logs.
@@ -16,10 +17,19 @@ This Terraform module:
 1. [Terraform v0.13+](https://www.terraform.io/downloads.html) - execute terraform files
 2. [Python3](https://www.python.org/downloads/)
 3. [Azure Functions Core Tools](https://docs.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=v4%2Cwindows%2Ccsharp%2Cportal%2Cbash)
+4. [Resource Providers](https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-providers-and-types#register-resource-provider-1) mentioned below should be registered in the subscription:
+  ``` shell
+      Microsoft.Compute
+      Microsoft.Storage
+      Microsoft.Network
+      Microsoft.KeyVault
+      Microsoft.ManagedIdentity
+      Microsoft.insights
+      Microsoft.Web
+  ```
+
 
 ## Providers
-
-The module `aviatrix_controller_arm` does not currently support `azuread` version above 2.0. You can use the [pessimistic constraint operator](https://www.terraform.io/docs/language/expressions/version-constraints.html#gt--1) in your `required_providers` configuration to use the latest version 2.0.x release of `azuread`.
 
 | Name | Version |
 |------|---------|
@@ -105,48 +115,48 @@ terraform {
 
 module "aviatrix_controller_azure" {
     source                                         = "github.com/AviatrixSystems/Azure_Controller_HA.git//aviatrix_controller_ha?ref=main"
-    subscription_id                                = "<Subscription ID>"                   # Required; Subscription ID where resources are deployed.
-    to_be_created_service_principal_name           = "<Name of Service Principal>"         # Optional; The name of the App Registration/Service Principal to be created.
-    create_custom_role                             = true/false                            # Optional; Creates the App Registration/Service Principal with specific roles instead of 'Contributor' Permissions. Default = false
-    resource_group_name                            = "<Name of Resource Group>"            # Required; Creates a Resource Group with this name.
-    location                                       = "<Name of Region/Location>"           # Required; Creates all resources in this region/location.
-    storage_account_name                           = "<Name of Storage Account>"           # Optional; Creates Storage account with this name. Default = "aviatrixstorage<random hex value>"
-    key_vault_name                                 = "<Name of Key Vault>"                 # Optional; Creates Key vault with this name. Default = "aviatrix-key-vault-<random hex value>"
-    virtual_network_name                           = "<Name of Virtual Network>"           # Optional; Creates Virtual Network with this name. Default = "aviatrix-vnet"
-    virtual_network_cidr                           = "<Virtual Network Address Space>"     # Optional; Creates Virtual Network with this address space. Default = "10.0.0.0/23"
-    subnet_name                                    = "<Name of Subnet>"                    # Optional; Creates Subnet with this name. Default = "aviatrix-subnet"
-    subnet_cidr                                    = "<Subnet Cidr>"                       # Optional; Creates Subnet with this cidr. Default = "10.0.0.0/24"
-    load_balancer_frontend_public_ip_name          = "<Name of LB Frontend Public IP>"     # Optional; Creates LoadBalancer Frontend IP with this name. Default = "aviatrix-lb-public-ip"
-    load_balancer_name                             = "<Name of LoadBalancer>"              # Optional; Creates LoadBalancer with this name. Default = "aviatrix-lb"
-    load_balancer_frontend_name                    = "<Name of LoadBalancer Frontend>"     # Optional; Creates LoadBalancer Frontend Configurations with this name. Default = "aviatrix-lb-frontend"
-    load_balancer_controller_backend_pool_name     = "<Name of LoadBalancer Backend Pool>" # Optional; Creates LoadBalancer Backend Pool with this name. Default = "aviatrix-controller-backend"
-    load_balancer_controller_health_probe_name     = "<Name of LoadBalancer Health Probe>" # Optional; Creates LoadBalancer Health Probe with this name. Default = "aviatrix-controller-probe"
-    load_balancer_controller_rule_name             = "<Name of LoadBalancer Rule>"         # Optional; Creates LoadBalancer Rule with this name. Default = "aviatrix-controller-lb-rule"
-    network_security_group_controller_name         = "<Name of Network Security Group>"    # Optional; Creates Network Security Group with this name. Default = "aviatrix-controller-nsg"
-    aviatrix_controller_security_group_allowed_ips = [<List of Public IP's to be Allowed>] # Required; Creates Network Security Group Rule with these allowed IP's.
-    controller_virtual_machine_size           = "<Controller VM Size>"                     # Optional; Creates Scale Set with this size Virtual Machine. Default = "Standard_A4_v2"
-    scale_set_controller_name                 = "<Controller Scale Set Name>"              # Optional; Creates Scale Set with this name. Default = "aviatrix-controller-scale-set"
-    controller_virtual_machine_admin_username = "<VM Username>"                            # Optional; Creates Virtual Machine with this username. Default = "aviatrix"
-    controller_virtual_machine_admin_password = "<VM Password>"                            # Optional; Creates Virtual machine with this password. Default = "<autogenerated value>"
-    controller_public_ssh_key                 = "<SSH Public Key>"                         # Optional; The Public Key to be used for the Virtual Machine. Default = ""
-    avx_access_account_name       = "<Account Name in Aviatrix Controller>" # Required; Creates an access account with this name in the Aviatrix Controller.
-    avx_account_email             = "<Account Email Address>"               # Required; Creates an access account with this email address in the Aviatrix Controller.
-    avx_controller_admin_email    = "<Admin Account Email Address>"         # Required; Adds this email address to admin account in the Aviatrix Controller.
-    avx_aviatrix_customer_id      = "<License ID For Aviatrix Controller>"  # Required; Customer License ID for the Aviatrix Controller.
-    avx_controller_admin_password = "<Admin Password>"                      # Optional; Changes admin password to this password. Default = "<autogenerated value>"
-    avx_controller_version        = "<Controller Version>"                  # Optional; Upgrades the controller to this version. Default = "latest"
-    application_insights_name              = "<Name of App Insights>"                       # Optional; Creates Application Insights with this name. Default = "aviatrix-function-app-insights"
-    app_service_plan_name                  = "<Name of App Service Plan>"                   # Optional; Creates App Service Plan with this name. Default = "aviatrix-function-app-sp"
-    function_app_name                      = "<Name of Function App>"                       # Optional; Creates Function App with this name. Default = "aviatrix-controller-app-<random hex value>"
-    user_assigned_identity_name            = "<Name of User Assigned Identity>"             # Optional; Creates a User Assigned Identity with this name. Default = "aviatrix-function-identity"
-    aviatrix_function_app_custom_role_name = "<Name of Custom RBAC Role>"                   # Optional; Creates a Custom Role with permissions for the User Assigned Identity. Default = "aviatrix-function-custom-role"
-    function_action_group_name             = "<Name of Function Action Group>"              # Optional; Creates an Action Group for triggering the Function App with this name. Default = "aviatrix-function-action-group"
-    notification_action_group_name         = "<Name of Notification Action Group>"          # Optional; Creates an Action Group for notifying email with Function App results. Default = "aviatrix-notify-action-group"
-    notification_action_group_id           = "<Azure Resource ID of existing Action Group>" # Optional; Uses an already created Action Group to assign to Function App notifications. Default = ""
-    enable_function_app_alerts             = true/false                                     # Optional; Enable Function App Notifications for success, failure, exception. Default = false
-    az_support                             = true/false                                     # Required; Set to true if the Azure region supports AZ's.
-    disable_periodic_backup                = true/false                                     # Optional; Enable Periodic backup function. Default = true
-    schedule                               = "<Cron Timer>"                                 # Optional; Creates a backup every hour by default when disable_periodic_backup is set to false. Default = "0 0 * * * *"
+    subscription_id                                = "<Subscription ID>"                            # Required; Subscription ID where resources are deployed.
+    to_be_created_service_principal_name           = "<Name of Service Principal>"                  # Optional; The name of the App Registration/Service Principal to be created.
+    create_custom_role                             = true/false                                     # Optional; Creates the App Registration/Service Principal with specific roles instead of 'Contributor' Permissions. Default = false
+    resource_group_name                            = "<Name of Resource Group>"                     # Required; Creates a Resource Group with this name.
+    location                                       = "<Name of Region/Location>"                    # Required; Creates all resources in this region/location.
+    storage_account_name                           = "<Name of Storage Account>"                    # Optional; Creates Storage account with this name. Default = "aviatrixstorage<random hex value>"
+    key_vault_name                                 = "<Name of Key Vault>"                          # Optional; Creates Key vault with this name. Default = "aviatrix-key-vault-<random hex value>"
+    virtual_network_name                           = "<Name of Virtual Network>"                    # Optional; Creates Virtual Network with this name. Default = "aviatrix-vnet"
+    virtual_network_cidr                           = "<Virtual Network Address Space>"              # Optional; Creates Virtual Network with this address space. Default = "10.0.0.0/23"
+    subnet_name                                    = "<Name of Subnet>"                             # Optional; Creates Subnet with this name. Default = "aviatrix-subnet"
+    subnet_cidr                                    = "<Subnet Cidr>"                                # Optional; Creates Subnet with this cidr. Default = "10.0.0.0/24"
+    load_balancer_frontend_public_ip_name          = "<Name of LB Frontend Public IP>"              # Optional; Creates LoadBalancer Frontend IP with this name. Default = "aviatrix-lb-public-ip"
+    load_balancer_name                             = "<Name of LoadBalancer>"                       # Optional; Creates LoadBalancer with this name. Default = "aviatrix-lb"
+    load_balancer_frontend_name                    = "<Name of LoadBalancer Frontend>"              # Optional; Creates LoadBalancer Frontend Configurations with this name. Default = "aviatrix-lb-frontend"
+    load_balancer_controller_backend_pool_name     = "<Name of LoadBalancer Backend Pool>"          # Optional; Creates LoadBalancer Backend Pool with this name. Default = "aviatrix-controller-backend"
+    load_balancer_controller_health_probe_name     = "<Name of LoadBalancer Health Probe>"          # Optional; Creates LoadBalancer Health Probe with this name. Default = "aviatrix-controller-probe"
+    load_balancer_controller_rule_name             = "<Name of LoadBalancer Rule>"                  # Optional; Creates LoadBalancer Rule with this name. Default = "aviatrix-controller-lb-rule"
+    network_security_group_controller_name         = "<Name of Network Security Group>"             # Optional; Creates Network Security Group with this name. Default = "aviatrix-controller-nsg"
+    aviatrix_controller_security_group_allowed_ips = [<List of Public IP's to be Allowed>]          # Required; Creates Network Security Group Rule with these allowed IP's.
+    controller_virtual_machine_size                = "<Controller VM Size>"                         # Optional; Creates Scale Set with this size Virtual Machine. Default = "Standard_A4_v2"
+    scale_set_controller_name                      = "<Controller Scale Set Name>"                  # Optional; Creates Scale Set with this name. Default = "aviatrix-controller-scale-set"
+    controller_virtual_machine_admin_username      = "<VM Username>"                                # Optional; Creates Virtual Machine with this username. Default = "aviatrix"
+    controller_virtual_machine_admin_password      = "<VM Password>"                                # Optional; Creates Virtual machine with this password. Default = "<autogenerated value>"
+    controller_public_ssh_key                      = "<SSH Public Key>"                             # Optional; The Public Key to be used for the Virtual Machine. Default = ""
+    avx_access_account_name                        = "<Account Name in Aviatrix Controller>"        # Required; Creates an access account with this name in the Aviatrix Controller.
+    avx_account_email                              = "<Account Email Address>"                      # Required; Creates an access account with this email address in the Aviatrix Controller.
+    avx_controller_admin_email                     = "<Admin Account Email Address>"                # Required; Adds this email address to admin account in the Aviatrix Controller.
+    avx_aviatrix_customer_id                       = "<License ID For Aviatrix Controller>"         # Required; Customer License ID for the Aviatrix Controller.
+    avx_controller_admin_password                  = "<Admin Password>"                             # Optional; Changes admin password to this password. Default = "<autogenerated value>"
+    avx_controller_version                         = "<Controller Version>"                         # Optional; Upgrades the controller to this version. Default = "latest"
+    application_insights_name                      = "<Name of App Insights>"                       # Optional; Creates Application Insights with this name. Default = "aviatrix-function-app-insights"
+    app_service_plan_name                          = "<Name of App Service Plan>"                   # Optional; Creates App Service Plan with this name. Default = "aviatrix-function-app-sp"
+    function_app_name                              = "<Name of Function App>"                       # Optional; Creates Function App with this name. Default = "aviatrix-controller-app-<random hex value>"
+    user_assigned_identity_name                    = "<Name of User Assigned Identity>"             # Optional; Creates a User Assigned Identity with this name. Default = "aviatrix-function-identity"
+    aviatrix_function_app_custom_role_name         = "<Name of Custom RBAC Role>"                   # Optional; Creates a Custom Role with permissions for the User Assigned Identity. Default = "aviatrix-function-custom-role"
+    function_action_group_name                     = "<Name of Function Action Group>"              # Optional; Creates an Action Group for triggering the Function App with this name. Default = "aviatrix-function-action-group"
+    notification_action_group_name                 = "<Name of Notification Action Group>"          # Optional; Creates an Action Group for notifying email with Function App results. Default = "aviatrix-notify-action-group"
+    notification_action_group_id                   = "<Azure Resource ID of existing Action Group>" # Optional; Uses an already created Action Group to assign to Function App notifications. Default = ""
+    enable_function_app_alerts                     = true/false                                     # Optional; Enable Function App Notifications for success, failure, exception. Default = false
+    az_support                                     = true/false                                     # Required; Set to true if the Azure region supports AZ's.
+    disable_periodic_backup                        = true/false                                     # Optional; Enable Periodic backup function. Default = true
+    schedule                                       = "<Cron Timer>"                                 # Optional; Creates a backup every hour by default when disable_periodic_backup is set to false. Default = "0 0 * * * *"
 }
 ```
 
@@ -167,7 +177,13 @@ Additional Information:
 
 3. Failover logs can be viewed in function monitor logs.
 
-4. Cron Timer [examples](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=csharp#ncrontab-examples)
+4. [List](https://github.com/MicrosoftDocs/azure-docs/blob/main/articles/availability-zones/includes/availability-zone-regions-include.md) of regions that support availability zones for the az_support var.
+5. Formatted names of the region for location var, can also be gathered using command below
+    ```shell
+    az account list-locations -o table
+    ````
+
+6. Cron Timer [examples](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=csharp#ncrontab-examples)
 
 Known Caveat :
 

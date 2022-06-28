@@ -812,7 +812,7 @@ def retrieve_controller_version(version_file, container_client):
     logging.info("Parsing version")
 
     try:
-        ctrl_version = ".".join(((buf[12:]).split("."))[:-1])
+        ctrl_version = ".".join((buf[12:]).split("."))
     except (KeyboardInterrupt, IndexError, ValueError) as err:
         raise AviatrixException("Could not decode version") from err
     else:
