@@ -47,21 +47,7 @@ Module  | Description |
 
 ## Procedures for Building and Initializing a Controller in Azure
 
-### 1. Install Azure CLI
-
-On Windows:
-``` shell
-$ProgressPreference = 'SilentlyContinue';
-Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile .\AzureCLI.msi; Start-Process msiexec.exe -Wait -ArgumentList '/I AzureCLI.msi /quiet';
-rm .\AzureCLI.msi
-```
-
-On Mac:
-``` shell
-brew update && brew install azure-cli
-```
-
-### 2. Create the Python virtual environment and install required dependencies
+### 1. Create the Python virtual environment and install required dependencies
 
 Create the virtual environment.
 
@@ -81,7 +67,7 @@ Install required dependencies.
 pip install -r requirements.txt
 ```
 
-### 3. Authenticating to Azure
+### 2. Authenticating to Azure
 
 Login to the Azure CLI using:
 
@@ -191,6 +177,9 @@ Known Caveat :
 ![ScreenShot](./Restore-error.png)
 
 2. Failover may or may not be triggered when instance is stopped manually. As per azure, this inconsistent behavior is technically by design when manual auto scale feature is used in azure virtual machine scale set.
+
+3. Run ``` python -m pip install -–upgrade pip```, if below error occurs during dependencies installation.
+![ScreenShot](./Pip-error.png)
 
 Note:
 
