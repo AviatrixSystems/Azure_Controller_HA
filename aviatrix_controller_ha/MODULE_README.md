@@ -21,7 +21,7 @@
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_aviatrix_controller_arm"></a> [aviatrix\_controller\_arm](#module\_aviatrix\_controller\_arm) | github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_azure | v2.0.0 |
-| <a name="module_aviatrix_controller_initialize"></a> [aviatrix\_controller\_initialize](#module\_aviatrix\_controller\_initialize) | github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize | v2.0.0 |
+| <a name="module_aviatrix_controller_initialize"></a> [aviatrix\_controller\_initialize](#module\_aviatrix\_controller\_initialize) | github.com/AviatrixSystems/terraform-aviatrix-azure-controller//modules/aviatrix_controller_initialize | v2.0.2 |
 
 ## Resources
 
