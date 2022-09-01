@@ -277,7 +277,7 @@ def wait_until_controller_api_server_is_ready(
             #           "Valid action required: login",
             #           which means the server is not ready yet
             #   case2 : return value is false and the reason message is
-            #           "username ans password do not match",
+            #           "username and password do not match",
             #           which means the server is ready
             if response is not None:
                 response_status_code = response.status_code
@@ -292,11 +292,15 @@ def wait_until_controller_api_server_is_ready(
                 response_message = py_dict["reason"]
                 response_msg_indicates_backend_not_ready = ("Valid action "
                                                             "required")
+                response_msg_request_refused = "RequestRefused"
                 # case1:
                 if (
                     py_dict["return"] is False
-                    and response_msg_indicates_backend_not_ready
-                    in response_message
+                    and (
+                        response_msg_indicates_backend_not_ready
+                        in response_message
+                        or response_msg_request_refused in response_message
+                        )
                 ):
                     is_api_service_ready = False
                     logging.info(
@@ -773,7 +777,7 @@ def run_initial_setup(api_endpoint_url="123.123.123.123/v1/api",
             request_method=request_method,
             payload=data,
             retry_count=1,
-            timeout=300,
+            timeout=360,
         )
     except AviatrixException as ae:
         # Ignore timeout exception since it is expected
