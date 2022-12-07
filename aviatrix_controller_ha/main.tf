@@ -39,7 +39,7 @@ resource "random_password" "generate_controller_cli_secret" {
   override_special = "_%@"
 }
 
-data "azurerm_client_config" "current" {}
+data "azuread_client_config" "current" {}
 
 # 1.0. Create Custom Service Principal for Aviatrix Controller
 module "aviatrix_controller_arm" {
@@ -92,7 +92,7 @@ resource "azurerm_key_vault" "aviatrix_key_vault" {
 resource "azurerm_role_assignment" "key_vault_pipeline_service_principal" {
   scope                = azurerm_key_vault.aviatrix_key_vault.id
   role_definition_name = "Key Vault Secrets Officer"
-  principal_id         = data.azurerm_client_config.current.object_id
+  principal_id         = data.azuread_client_config.current.object_id
 }
 
 # 4.2. Add Service Principal Secret to Key Vault
@@ -303,7 +303,7 @@ resource "azurerm_orchestrated_virtual_machine_scale_set" "aviatrix_scale_set" {
 
   os_disk {
     caching                   = "ReadWrite"
-    disk_size_gb              = 30
+    disk_size_gb              = 64
     storage_account_type      = "Standard_LRS"
     write_accelerator_enabled = false
   }
@@ -493,6 +493,7 @@ resource "azurerm_function_app" "controller_app" {
     ftps_state                = "Disabled"
     http2_enabled             = true
     use_32_bit_worker_process = false
+    elastic_instance_minimum  = 1
   }
 
   depends_on = [
